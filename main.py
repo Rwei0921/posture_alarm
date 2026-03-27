@@ -165,9 +165,13 @@ def run() -> None:
     overlay = Overlay()
 
     cv2 = None
-    if config.SHOW_WINDOW:
+    if config.SHOW_WINDOW or config.BED_ROI_MARK_ON_START:
         cv2 = _load_cv2()
-        if config.BED_ROI_MARK_ON_START:
+
+    if config.BED_ROI_MARK_ON_START:
+        if cv2 is None:
+            logger.warning("BED_ROI_MARK_ON_START=1 but OpenCV GUI is unavailable")
+        else:
             _interactive_mark_bed_roi(cam, cv2, config.BED_ROI_MARK_SCALE, logger)
 
     previous_state = state_machine.state
