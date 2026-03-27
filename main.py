@@ -6,6 +6,7 @@ import importlib
 import os
 import signal
 import time
+from typing import Any
 
 import config
 from alert.buzzer_led import BuzzerLED
@@ -31,13 +32,47 @@ def _load_cv2():
 
 
 def _in_bed_roi(hip_center: tuple[float, float]) -> bool:
+    x, y = hip_center
+
+    if config.BED_POLYGON_ENABLED:
+        polygon = _bed_polygon_points()
+        return _point_in_polygon((x, y), polygon)
+
     if not config.BED_ROI_ENABLED:
         return False
-    x, y = hip_center
+
     return (
         config.BED_ROI_X1 <= x <= config.BED_ROI_X2
         and config.BED_ROI_Y1 <= y <= config.BED_ROI_Y2
     )
+
+
+def _bed_polygon_points() -> list[tuple[float, float]]:
+    return [
+        (config.BED_POLY_P1_X, config.BED_POLY_P1_Y),
+        (config.BED_POLY_P2_X, config.BED_POLY_P2_Y),
+        (config.BED_POLY_P3_X, config.BED_POLY_P3_Y),
+        (config.BED_POLY_P4_X, config.BED_POLY_P4_Y),
+    ]
+
+
+def _point_in_polygon(point: tuple[float, float], polygon: list[tuple[float, float]]) -> bool:
+    if len(polygon) < 3:
+        return False
+
+    x, y = point
+    inside = False
+    j = len(polygon) - 1
+    for i in range(len(polygon)):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        intersect = ((yi > y) != (yj > y)) and (
+            x < ((xj - xi) * (y - yi) / ((yj - yi) + 1e-12) + xi)
+        )
+        if intersect:
+            inside = not inside
+        j = i
+    return inside
 
 
 def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
@@ -45,8 +80,22 @@ def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
     window = "Mark BED ROI"
     window_initialized = False
 
-    logger.info("BED ROI marker: SPACE=select, Q=skip")
-    selected: tuple[float, float, float, float] | None = None
+    logger.info("BED ROI marker: click 4 corners (TL->TR->BR->BL), ENTER=confirm, R=reset, Q=skip")
+    points: list[tuple[float, float]] = []
+    mouse_state: dict[str, Any] = {"frame_shape": None}
+
+    def _mouse_cb(event, x, y, _flags, _param):
+        if event != cv2.EVENT_LBUTTONDOWN:
+            return
+        if len(points) >= 4:
+            return
+        frame_shape = mouse_state.get("frame_shape")
+        if frame_shape is None:
+            return
+        fh, fw = frame_shape
+        nx = max(0.0, min(1.0, (x / scale) / fw))
+        ny = max(0.0, min(1.0, (y / scale) / fh))
+        points.append((nx, ny))
 
     while True:
         ok, frame = cam.read_frame()
@@ -58,25 +107,45 @@ def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
             h, w = frame.shape[:2]
             cv2.namedWindow(window, cv2.WINDOW_NORMAL)
             cv2.resizeWindow(window, int(w * scale), int(h * scale))
+            cv2.setMouseCallback(window, _mouse_cb)
             window_initialized = True
 
+        mouse_state["frame_shape"] = frame.shape[:2]
         preview = frame.copy()
-        if selected is not None:
-            x1, y1, x2, y2 = selected
-            h, w = preview.shape[:2]
-            p1 = (int(x1 * w), int(y1 * h))
-            p2 = (int(x2 * w), int(y2 * h))
-            cv2.rectangle(preview, p1, p2, (0, 170, 255), 2)
+        h, w = preview.shape[:2]
+        pixel_points = [(int(px * w), int(py * h)) for px, py in points]
+
+        for idx, p in enumerate(pixel_points):
+            cv2.circle(preview, p, 5, (0, 170, 255), -1)
+            cv2.putText(
+                preview,
+                str(idx + 1),
+                (p[0] + 6, p[1] - 6),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 170, 255),
+                2,
+                cv2.LINE_AA,
+            )
+
+        if len(pixel_points) >= 2:
+            cv2.polylines(
+                preview,
+                [importlib.import_module("numpy").array(pixel_points, dtype="int32")],
+                len(pixel_points) == 4,
+                (0, 170, 255),
+                2,
+            )
 
         if scale != 1.0:
             preview = cv2.resize(preview, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
 
         cv2.putText(
             preview,
-            "SPACE: select BED ROI  |  Q: continue",
+            "Click 4 corners | ENTER: confirm | R: reset | Q: skip",
             (20, 30),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
+            0.6,
             (255, 255, 255),
             2,
             cv2.LINE_AA,
@@ -87,29 +156,37 @@ def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
         if key in (ord("q"), ord("Q"), 27):
             break
 
-        if key == 32:
-            frozen = frame
-            if scale != 1.0:
-                frozen = cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        if key in (ord("r"), ord("R")):
+            points.clear()
+            continue
 
-            roi = tuple(cv2.selectROI(window, frozen, fromCenter=False, showCrosshair=True))
-            x, y, w, h = int(roi[0]), int(roi[1]), int(roi[2]), int(roi[3])
-            if w <= 0 or h <= 0:
+        if key in (13, 10, 32):
+            if len(points) != 4:
+                logger.info("Please click exactly 4 points before confirm")
                 continue
 
-            fh, fw = frame.shape[:2]
-            x1 = max(0.0, min(1.0, (x / scale) / fw))
-            y1 = max(0.0, min(1.0, (y / scale) / fh))
-            x2 = max(0.0, min(1.0, ((x + w) / scale) / fw))
-            y2 = max(0.0, min(1.0, ((y + h) / scale) / fh))
-            selected = (x1, y1, x2, y2)
+            config.BED_POLYGON_ENABLED = True
+            config.BED_POLY_P1_X, config.BED_POLY_P1_Y = points[0]
+            config.BED_POLY_P2_X, config.BED_POLY_P2_Y = points[1]
+            config.BED_POLY_P3_X, config.BED_POLY_P3_Y = points[2]
+            config.BED_POLY_P4_X, config.BED_POLY_P4_Y = points[3]
 
+            # Backward-compatible rectangle bounds for existing tooling.
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
             config.BED_ROI_ENABLED = True
-            config.BED_ROI_X1 = x1
-            config.BED_ROI_Y1 = y1
-            config.BED_ROI_X2 = x2
-            config.BED_ROI_Y2 = y2
-            logger.info("BED ROI set to x1=%.4f y1=%.4f x2=%.4f y2=%.4f", x1, y1, x2, y2)
+            config.BED_ROI_X1 = min(xs)
+            config.BED_ROI_Y1 = min(ys)
+            config.BED_ROI_X2 = max(xs)
+            config.BED_ROI_Y2 = max(ys)
+
+            logger.info(
+                "BED polygon set: (%.4f,%.4f) (%.4f,%.4f) (%.4f,%.4f) (%.4f,%.4f)",
+                points[0][0], points[0][1],
+                points[1][0], points[1][1],
+                points[2][0], points[2][1],
+                points[3][0], points[3][1],
+            )
             break
 
     cv2.destroyWindow(window)
@@ -204,13 +281,20 @@ def run() -> None:
         config.CAMERA_HEIGHT,
     )
     if config.BED_ROI_ENABLED:
-        logger.info(
-            "bed roi enabled: x1=%.3f y1=%.3f x2=%.3f y2=%.3f",
-            config.BED_ROI_X1,
-            config.BED_ROI_Y1,
-            config.BED_ROI_X2,
-            config.BED_ROI_Y2,
-        )
+        if config.BED_POLYGON_ENABLED:
+            pts = _bed_polygon_points()
+            logger.info(
+                "bed polygon enabled: (%.3f,%.3f) (%.3f,%.3f) (%.3f,%.3f) (%.3f,%.3f)",
+                pts[0][0], pts[0][1], pts[1][0], pts[1][1], pts[2][0], pts[2][1], pts[3][0], pts[3][1]
+            )
+        else:
+            logger.info(
+                "bed roi enabled: x1=%.3f y1=%.3f x2=%.3f y2=%.3f",
+                config.BED_ROI_X1,
+                config.BED_ROI_Y1,
+                config.BED_ROI_X2,
+                config.BED_ROI_Y2,
+            )
 
     try:
         while not stop_requested:
@@ -278,13 +362,16 @@ def run() -> None:
             if landmarks:
                 frame = overlay.draw_landmarks(frame, landmarks)
             if config.BED_ROI_ENABLED and config.BED_ROI_SHOW:
-                frame = overlay.draw_bed_roi(
-                    frame,
-                    config.BED_ROI_X1,
-                    config.BED_ROI_Y1,
-                    config.BED_ROI_X2,
-                    config.BED_ROI_Y2,
-                )
+                if config.BED_POLYGON_ENABLED:
+                    frame = overlay.draw_bed_polygon(frame, _bed_polygon_points())
+                else:
+                    frame = overlay.draw_bed_roi(
+                        frame,
+                        config.BED_ROI_X1,
+                        config.BED_ROI_Y1,
+                        config.BED_ROI_X2,
+                        config.BED_ROI_Y2,
+                    )
             if state == PostureState.FALLEN:
                 frame = overlay.draw_alert(frame, "FALL DETECTED")
 

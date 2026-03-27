@@ -85,3 +85,37 @@ class Overlay:
             cv2.LINE_AA,
         )
         return frame
+
+    def draw_bed_polygon(
+        self,
+        frame: Any,
+        points: list[tuple[float, float]],
+        label: str = "BED ROI",
+    ) -> Any:
+        if len(points) < 3:
+            return frame
+        cv2 = self._load_cv2()
+        np = importlib.import_module("numpy")
+        h, w = frame.shape[:2]
+        pixel_points = [
+            (
+                int(max(0.0, min(1.0, x)) * w),
+                int(max(0.0, min(1.0, y)) * h),
+            )
+            for x, y in points
+        ]
+        poly = np.array(pixel_points, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(frame, [poly], True, (0, 170, 255), 2)
+        for p in pixel_points:
+            cv2.circle(frame, p, 4, (0, 170, 255), -1)
+        cv2.putText(
+            frame,
+            label,
+            (pixel_points[0][0], max(20, pixel_points[0][1] - 8)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            self.font_scale * 0.8,
+            (0, 170, 255),
+            max(1, self.thickness - 1),
+            cv2.LINE_AA,
+        )
+        return frame

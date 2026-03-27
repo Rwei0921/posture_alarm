@@ -139,6 +139,7 @@ python main.py
 - `RPICAM_FPS`、`RPICAM_TIMEOUT_MS`（`rpicam` 後端參數）
 - `FALL_EVENT_MIN_HIP_DROP`、`FALL_EVENT_WINDOW_SECONDS`（跌倒事件窗）
 - `BED_ROI_ENABLED`、`BED_ROI_X1`、`BED_ROI_Y1`、`BED_ROI_X2`、`BED_ROI_Y2`（床區域抑制誤報）
+- `BED_POLYGON_ENABLED`、`BED_POLY_P1~P4`（四點床區多邊形）
 - `SHOW_WINDOW`（`1` or `0`）
 - `LINE_NOTIFY_TOKEN`
 - `TELEGRAM_BOT_TOKEN`
@@ -151,6 +152,7 @@ python main.py
 ## 7) 目前限制與已知風險
 
 - 跌倒判定已改為事件 + 分數平滑，仍需依病房鏡頭角度進行實測調參
+- 已支援四點床區多邊形標記，較矩形 ROI 更適合斜角病房鏡頭
 - 已加入通知冷卻機制（`ALERT_COOLDOWN_SECONDS`），仍需現場驗證冷卻秒數是否符合照護流程
 - 硬體端（GPIO/IMU）仍以「模擬可跑」為主，真實寄存器讀值流程可再補強
 - 無攝影機或無 GUI 環境下，需關閉視窗顯示（`SHOW_WINDOW=0`）

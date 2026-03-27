@@ -45,6 +45,15 @@ BED_ROI_Y2 = float(os.getenv("BED_ROI_Y2", "0.95"))
 BED_ROI_SHOW = os.getenv("BED_ROI_SHOW", "1") == "1"
 BED_ROI_MARK_ON_START = os.getenv("BED_ROI_MARK_ON_START", "1") == "1"
 BED_ROI_MARK_SCALE = float(os.getenv("BED_ROI_MARK_SCALE", "0.5"))
+BED_POLYGON_ENABLED = os.getenv("BED_POLYGON_ENABLED", "0") == "1"
+BED_POLY_P1_X = float(os.getenv("BED_POLY_P1_X", "0.20"))
+BED_POLY_P1_Y = float(os.getenv("BED_POLY_P1_Y", "0.35"))
+BED_POLY_P2_X = float(os.getenv("BED_POLY_P2_X", "0.90"))
+BED_POLY_P2_Y = float(os.getenv("BED_POLY_P2_Y", "0.35"))
+BED_POLY_P3_X = float(os.getenv("BED_POLY_P3_X", "0.90"))
+BED_POLY_P3_Y = float(os.getenv("BED_POLY_P3_Y", "0.95"))
+BED_POLY_P4_X = float(os.getenv("BED_POLY_P4_X", "0.20"))
+BED_POLY_P4_Y = float(os.getenv("BED_POLY_P4_Y", "0.95"))
 
 # State machine timing (seconds)
 SUSPECT_FALL_TIMEOUT = float(os.getenv("SUSPECT_FALL_TIMEOUT", "2.0"))
