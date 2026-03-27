@@ -26,6 +26,16 @@ def _load_cv2():
     return importlib.import_module("cv2")
 
 
+def _in_bed_roi(hip_center: tuple[float, float]) -> bool:
+    if not config.BED_ROI_ENABLED:
+        return False
+    x, y = hip_center
+    return (
+        config.BED_ROI_X1 <= x <= config.BED_ROI_X2
+        and config.BED_ROI_Y1 <= y <= config.BED_ROI_Y2
+    )
+
+
 def run() -> None:
     logger = setup_logger()
     stop_requested = False
@@ -67,6 +77,8 @@ def run() -> None:
         speed_threshold=config.FALL_SPEED_THRESHOLD,
         window_size=config.FALL_SCORE_WINDOW_SIZE,
         score_threshold=config.FALL_SCORE_THRESHOLD,
+        min_hip_drop=config.FALL_EVENT_MIN_HIP_DROP,
+        event_window_seconds=config.FALL_EVENT_WINDOW_SECONDS,
     )
     state_machine = PostureStateMachine(
         suspect_timeout=config.SUSPECT_FALL_TIMEOUT,
@@ -126,6 +138,11 @@ def run() -> None:
             if person_present:
                 fall_detected, features = fall_classifier.classify(landmarks)
                 hip_speed = features.hip_speed
+                if fall_detected and _in_bed_roi((
+                    (landmarks[23]["x"] + landmarks[24]["x"]) / 2.0,
+                    features.hip_center_y,
+                )) and not features.has_fall_event:
+                    fall_detected = False
 
             motion_detected = hip_speed > 0.02 if person_present else False
             impact_detected = imu.detect_impact()

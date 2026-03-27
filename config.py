@@ -33,6 +33,15 @@ FALL_HIP_SHOULDER_DIFF_THRESHOLD = float(os.getenv("FALL_HIP_SHOULDER_DIFF_THRES
 FALL_SPEED_THRESHOLD = float(os.getenv("FALL_SPEED_THRESHOLD", "0.28"))
 FALL_SCORE_WINDOW_SIZE = int(os.getenv("FALL_SCORE_WINDOW_SIZE", "5"))
 FALL_SCORE_THRESHOLD = float(os.getenv("FALL_SCORE_THRESHOLD", "0.6"))
+FALL_EVENT_MIN_HIP_DROP = float(os.getenv("FALL_EVENT_MIN_HIP_DROP", "0.12"))
+FALL_EVENT_WINDOW_SECONDS = float(os.getenv("FALL_EVENT_WINDOW_SECONDS", "1.5"))
+
+# Bed region-of-interest (normalized 0~1) for false-positive reduction
+BED_ROI_ENABLED = os.getenv("BED_ROI_ENABLED", "0") == "1"
+BED_ROI_X1 = float(os.getenv("BED_ROI_X1", "0.20"))
+BED_ROI_Y1 = float(os.getenv("BED_ROI_Y1", "0.35"))
+BED_ROI_X2 = float(os.getenv("BED_ROI_X2", "0.90"))
+BED_ROI_Y2 = float(os.getenv("BED_ROI_Y2", "0.95"))
 
 # State machine timing (seconds)
 SUSPECT_FALL_TIMEOUT = float(os.getenv("SUSPECT_FALL_TIMEOUT", "2.0"))

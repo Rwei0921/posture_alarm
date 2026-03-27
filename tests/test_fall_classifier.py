@@ -12,8 +12,8 @@ def _standing_landmarks() -> list[dict[str, float]]:
     points = _blank_landmarks()
     points[11].update({"x": 0.45, "y": 0.30})
     points[12].update({"x": 0.55, "y": 0.30})
-    points[23].update({"x": 0.47, "y": 0.65})
-    points[24].update({"x": 0.53, "y": 0.65})
+    points[23].update({"x": 0.47, "y": 0.35})
+    points[24].update({"x": 0.53, "y": 0.35})
     return points
 
 
@@ -35,10 +35,12 @@ def test_standing_pose_is_not_fall():
 
 def test_fall_posture_triggers_detection():
     classifier = FallClassifier(window_size=1, score_threshold=0.6)
-    detected, features = classifier.classify(_fallen_landmarks(), timestamp=1.0)
+    classifier.classify(_standing_landmarks(), timestamp=1.0)
+    detected, features = classifier.classify(_fallen_landmarks(), timestamp=1.3)
     assert detected is True
     assert features.trunk_angle_deg >= 55
     assert features.hip_shoulder_diff <= 0.12
+    assert features.has_fall_event is True
 
 
 def test_multi_frame_smoothing_logic():
@@ -52,10 +54,31 @@ def test_multi_frame_smoothing_logic():
         _fallen_landmarks(),
     ]
 
-    outputs = [classifier.classify(lm, timestamp=idx + 1.0)[0] for idx, lm in enumerate(seq)]
+    timestamps = [1.0, 2.0, 2.3, 2.6, 2.9]
+    outputs = [classifier.classify(lm, timestamp=timestamps[idx])[0] for idx, lm in enumerate(seq)]
 
     assert outputs[0] is False
     assert outputs[1] is False
     assert outputs[2] is False
     assert outputs[3] is False
     assert outputs[4] is True
+
+
+def test_slow_lie_down_not_detected_as_fall():
+    classifier = FallClassifier(window_size=3, score_threshold=0.6, min_hip_drop=0.12)
+
+    def lying_step(y_hip: float) -> list[dict[str, float]]:
+        points = _blank_landmarks()
+        points[11].update({"x": 0.72, "y": 0.55})
+        points[12].update({"x": 0.80, "y": 0.55})
+        points[23].update({"x": 0.20, "y": y_hip})
+        points[24].update({"x": 0.28, "y": y_hip})
+        return points
+
+    outputs = [
+        classifier.classify(lying_step(0.40), timestamp=1.0)[0],
+        classifier.classify(lying_step(0.46), timestamp=2.0)[0],
+        classifier.classify(lying_step(0.52), timestamp=3.0)[0],
+        classifier.classify(lying_step(0.56), timestamp=4.0)[0],
+    ]
+    assert outputs == [False, False, False, False]

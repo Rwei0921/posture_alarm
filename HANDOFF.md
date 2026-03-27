@@ -8,6 +8,7 @@ Last updated: 2026-03-19
 - Added alert/notifier/storage/ui modules with simulation-friendly defaults.
 - Wired everything in `main.py` and validated import health (`All imports OK`).
 - Added alert cooldown (`ALERT_COOLDOWN_SECONDS`) and scored multi-frame fall smoothing.
+- Added event-window fall gating (`FALL_EVENT_MIN_HIP_DROP`, `FALL_EVENT_WINDOW_SECONDS`) and bed ROI suppression (`BED_ROI_*`) to reduce slow-lie false positives.
 - Added test suite (`tests/`) for state machine, classifier, and DB.
 - Added deployment/unit files (`posture_alarm.service`) and tuning guide (`TUNING_GUIDE.md`).
 

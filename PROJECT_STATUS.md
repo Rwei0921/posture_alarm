@@ -18,7 +18,7 @@
 ### 現行流程
 Camera  
 -> MediaPipe Pose（人體存在 + 姿態關鍵點）  
--> Fall Classifier（規則式判定）  
+-> Fall Classifier（事件 + 分數平滑判定）  
 -> State Machine（NORMAL / SUSPECT_FALL / FALLEN / SEDENTARY）  
 -> Alert + Notifier + DB 記錄 + Overlay 顯示
 
@@ -38,7 +38,7 @@ Camera
 - `vision/camera.py`：`Camera` 類別，支援 `rpicam` / `picamera2` / OpenCV
 - `vision/person_detector.py`：`PersonDetector`，以關鍵點 visibility 判斷是否有人
 - `vision/pose_estimator.py`：`PoseEstimator`，提取 33 點 landmarks（x/y/z/visibility）
-- `vision/fall_classifier.py`：`FallClassifier`，依軀幹角度/肩髖高差/髖部速度判定
+- `vision/fall_classifier.py`：`FallClassifier`，依軀幹角度/肩髖高差/髖部速度 + 多幀分數 + 事件窗判定
 
 ### Core
 - `core/state_machine.py`：`PostureStateMachine`（含時間條件轉換）
@@ -120,6 +120,8 @@ python main.py
 - `CAMERA_SOURCE`（例如 `0`）
 - `CAMERA_BACKEND`（`auto` / `rpicam` / `picamera2` / `opencv`）
 - `RPICAM_FPS`、`RPICAM_TIMEOUT_MS`（`rpicam` 後端參數）
+- `FALL_EVENT_MIN_HIP_DROP`、`FALL_EVENT_WINDOW_SECONDS`（跌倒事件窗）
+- `BED_ROI_ENABLED`、`BED_ROI_X1`、`BED_ROI_Y1`、`BED_ROI_X2`、`BED_ROI_Y2`（床區域抑制誤報）
 - `SHOW_WINDOW`（`1` or `0`）
 - `LINE_NOTIFY_TOKEN`
 - `TELEGRAM_BOT_TOKEN`
@@ -131,7 +133,7 @@ python main.py
 
 ## 7) 目前限制與已知風險
 
-- 跌倒判定目前為規則式，需實測調參（不同鏡頭角度/場景影響大）
+- 跌倒判定已改為事件 + 分數平滑，仍需依病房鏡頭角度進行實測調參
 - 已加入通知冷卻機制（`ALERT_COOLDOWN_SECONDS`），仍需現場驗證冷卻秒數是否符合照護流程
 - 硬體端（GPIO/IMU）仍以「模擬可跑」為主，真實寄存器讀值流程可再補強
 - 無攝影機或無 GUI 環境下，需關閉視窗顯示（`SHOW_WINDOW=0`）
@@ -174,11 +176,11 @@ pkill -f rpicam-vid
 
 ## 9) 下一步建議（優先順序）
 
-1. 加入「通知去重與冷卻時間」避免重複推播  
-2. 將跌倒判定改成分數制（多幀平滑）  
-3. 補齊單元測試（state machine / classifier / db）  
-4. 新增無頭模式與 systemd 服務部署說明  
-5. 實際樹莓派資料回收後再調整閾值
+1. 針對病房情境校正 `BED_ROI_*` 與 `FALL_EVENT_*`，降低「主動躺下」誤報  
+2. 累積 8 小時以上場域數據，驗證誤報率目標（< 1 / 8h）  
+3. 將病床躺臥分流為獨立狀態（例如 `LYING_SAFE`）以利後續分析  
+4. 補充整合測試（含通知冷卻與長時間運行）  
+5. 依照實測結果更新 `TUNING_GUIDE.md` 的場域預設值
 
 ---
 

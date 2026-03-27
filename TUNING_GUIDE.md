@@ -12,8 +12,15 @@ export FALL_HIP_SHOULDER_DIFF_THRESHOLD=0.12
 export FALL_SPEED_THRESHOLD=0.28
 export FALL_SCORE_WINDOW_SIZE=5
 export FALL_SCORE_THRESHOLD=0.6
+export FALL_EVENT_MIN_HIP_DROP=0.12
+export FALL_EVENT_WINDOW_SECONDS=1.5
 export POSE_VISIBILITY_THRESHOLD=0.6
 export MIN_VISIBLE_KEYPOINTS=10
+export BED_ROI_ENABLED=1
+export BED_ROI_X1=0.20
+export BED_ROI_Y1=0.35
+export BED_ROI_X2=0.90
+export BED_ROI_Y2=0.95
 ```
 
 ## 2. What each threshold controls
@@ -23,7 +30,10 @@ export MIN_VISIBLE_KEYPOINTS=10
 - `FALL_SPEED_THRESHOLD`: larger value means fewer sudden-fall detections from motion noise.
 - `FALL_SCORE_WINDOW_SIZE`: more frames means smoother decision but slower response.
 - `FALL_SCORE_THRESHOLD`: larger value reduces false alarms but may miss subtle falls.
+- `FALL_EVENT_MIN_HIP_DROP`: minimum short-term hip vertical drop needed to mark a fall event.
+- `FALL_EVENT_WINDOW_SECONDS`: how long a fall event can support later lying-posture confirmation.
 - `POSE_VISIBILITY_THRESHOLD` and `MIN_VISIBLE_KEYPOINTS`: larger values reduce object-as-person false positives.
+- `BED_ROI_*`: bed area ROI used to suppress bed-rest false positives.
 
 ## 3. Camera angle presets
 
@@ -63,5 +73,6 @@ python -c "from storage.reporter import Reporter; r=Reporter('data/events.db','r
 ## 5. Common troubleshooting
 
 - Too many false positives from objects: increase `POSE_VISIBILITY_THRESHOLD`, `MIN_VISIBLE_KEYPOINTS`, and `FALL_SCORE_THRESHOLD`.
+- Patient lying down on bed still triggers fall: increase `FALL_EVENT_MIN_HIP_DROP`, reduce `FALL_EVENT_WINDOW_SECONDS`, and calibrate `BED_ROI_*`.
 - Missed real falls: reduce `FALL_TRUNK_ANGLE_THRESHOLD_DEG` or `FALL_SCORE_THRESHOLD` slightly.
 - Slow detection: reduce `FALL_SCORE_WINDOW_SIZE` from 6 to 4-5.
