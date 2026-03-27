@@ -112,6 +112,11 @@ python main.py
 python mark_bed_roi.py
 ```
 
+> 每次啟動前都重新標記並直接啟動主程式：
+```bash
+python mark_bed_roi.py --run-main
+```
+
 4. 手動測試項目
 - 畫面是否正常讀取
 - 是否能看到狀態字樣與關鍵點

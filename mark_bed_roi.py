@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import importlib
+import os
+import subprocess
+import sys
 import time
 
 import config
@@ -13,9 +17,8 @@ def _load_cv2():
     return importlib.import_module("cv2")
 
 
-def main() -> None:
+def _run_marker(display_scale: float = 0.5) -> tuple[float, float, float, float] | None:
     cv2 = _load_cv2()
-    display_scale = 0.5
     cam = Camera(
         config.CAMERA_SOURCE,
         config.CAMERA_WIDTH,
@@ -34,7 +37,7 @@ def main() -> None:
     print("Press Q to exit without changes.")
     print(f"Display scale: {display_scale}")
 
-    selected = None
+    selected: tuple[float, float, float, float] | None = None
 
     try:
         while True:
@@ -107,6 +110,47 @@ def main() -> None:
     finally:
         cam.release()
         cv2.destroyAllWindows()
+
+    return selected
+
+
+def _run_main_with_roi(roi: tuple[float, float, float, float]) -> int:
+    x1, y1, x2, y2 = roi
+    env = os.environ.copy()
+    env["BED_ROI_ENABLED"] = "1"
+    env["BED_ROI_X1"] = f"{x1:.4f}"
+    env["BED_ROI_Y1"] = f"{y1:.4f}"
+    env["BED_ROI_X2"] = f"{x2:.4f}"
+    env["BED_ROI_Y2"] = f"{y2:.4f}"
+
+    print("\nLaunching main.py with selected BED ROI...")
+    return subprocess.call([sys.executable, "main.py"], env=env)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Mark BED ROI and optionally start main.py")
+    parser.add_argument(
+        "--run-main",
+        action="store_true",
+        help="Start main.py immediately after selecting BED ROI",
+    )
+    parser.add_argument(
+        "--scale",
+        type=float,
+        default=0.5,
+        help="Preview display scale for ROI marker",
+    )
+    args = parser.parse_args()
+
+    selected = _run_marker(display_scale=args.scale)
+
+    if args.run_main:
+        if selected is None:
+            print("No ROI selected. main.py not started.")
+            return
+        code = _run_main_with_roi(selected)
+        if code != 0:
+            raise SystemExit(code)
 
 
 if __name__ == "__main__":
