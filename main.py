@@ -158,7 +158,16 @@ def run() -> None:
                 frame = overlay.draw_alert(frame, "FALL DETECTED")
 
             if config.SHOW_WINDOW and cv2 is not None:
-                cv2.imshow("posture_alarm", frame)
+                display_frame = frame
+                if config.DISPLAY_SCALE > 0 and config.DISPLAY_SCALE != 1.0:
+                    display_frame = cv2.resize(
+                        frame,
+                        None,
+                        fx=config.DISPLAY_SCALE,
+                        fy=config.DISPLAY_SCALE,
+                        interpolation=cv2.INTER_AREA,
+                    )
+                cv2.imshow("posture_alarm", display_frame)
                 key = cv2.waitKey(1) & 0xFF
                 if key in (ord("q"), ord("Q"), 27):
                     logger.info("exit requested by keyboard")
