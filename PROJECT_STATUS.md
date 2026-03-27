@@ -1,6 +1,6 @@
 # posture_alarm 專案實作狀態（MediaPipe 版本）
 
-最後更新：2026-03-19  
+最後更新：2026-03-27  
 目的：讓人與 AI 都能快速理解目前做到哪裡、怎麼跑、接下來做什麼。
 
 ---
@@ -31,6 +31,8 @@ Camera
 - `main.py`：主迴圈與模組整合
 - `requirements.txt`：已改為 MediaPipe/OpenCV/requests 等依賴
 - `structure.txt`：說明已更新為 MediaPipe 人體偵測語意
+- `posture_alarm.service`：systemd 無頭部署範本
+- `TUNING_GUIDE.md`：閾值調參指南
 
 ### Vision
 - `vision/camera.py`：`Camera` 類別，支援 `rpicam` / `picamera2` / OpenCV
@@ -57,6 +59,11 @@ Camera
 ### UI
 - `ui/overlay.py`：`Overlay`（狀態字樣、警報提示、關鍵點繪製）
 
+### Tests
+- `tests/test_state_machine.py`：狀態機轉換測試
+- `tests/test_fall_classifier.py`：跌倒判定與多幀平滑測試
+- `tests/test_db.py`：SQLite 事件寫入與讀取測試
+
 ---
 
 ## 4) 已完成驗證
@@ -67,6 +74,12 @@ Camera
 
 ```bash
 python -c "from vision.camera import Camera; from vision.person_detector import PersonDetector; from vision.pose_estimator import PoseEstimator; from vision.fall_classifier import FallClassifier; from core.state_machine import PostureStateMachine; from core.utils import setup_logger; from sensors.imu_mpu6050 import IMU_MPU6050; from alert.buzzer_led import BuzzerLED; from alert.notifier_line import LineNotifier; from alert.notifier_telegram import TelegramNotifier; from storage.db_sqlite import EventDB; from storage.reporter import Reporter; from ui.overlay import Overlay; print('All imports OK')"
+```
+
+並已新增單元測試目錄，可使用以下指令執行：
+
+```bash
+python -m pytest tests/ -v
 ```
 
 ---
@@ -119,9 +132,36 @@ python main.py
 ## 7) 目前限制與已知風險
 
 - 跌倒判定目前為規則式，需實測調參（不同鏡頭角度/場景影響大）
-- `main.py` 中 FALLEN 狀態下通知可能連續觸發，建議加冷卻機制（cooldown）
+- 已加入通知冷卻機制（`ALERT_COOLDOWN_SECONDS`），仍需現場驗證冷卻秒數是否符合照護流程
 - 硬體端（GPIO/IMU）仍以「模擬可跑」為主，真實寄存器讀值流程可再補強
 - 無攝影機或無 GUI 環境下，需關閉視窗顯示（`SHOW_WINDOW=0`）
+
+> 進度更新：通知冷卻與多幀平滑已完成，後續重點為實地調參與資料累積。
+
+---
+
+## 8) systemd 部署（無頭模式）
+
+1. 複製 service：
+
+```bash
+sudo cp posture_alarm.service /etc/systemd/system/posture_alarm.service
+```
+
+2. 啟用與啟動：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable posture_alarm
+sudo systemctl start posture_alarm
+```
+
+3. 查狀態與日誌：
+
+```bash
+sudo systemctl status posture_alarm
+journalctl -u posture_alarm -f
+```
 
 ### 卡住時快速清理
 
@@ -132,7 +172,7 @@ pkill -f rpicam-vid
 
 ---
 
-## 8) 下一步建議（優先順序）
+## 9) 下一步建議（優先順序）
 
 1. 加入「通知去重與冷卻時間」避免重複推播  
 2. 將跌倒判定改成分數制（多幀平滑）  
@@ -142,7 +182,7 @@ pkill -f rpicam-vid
 
 ---
 
-## 9) 快速結論
+## 10) 快速結論
 
 目前專案已完成第一版端到端骨架，並成功通過模組匯入驗證。  
 可以在樹莓派上直接執行 `python main.py` 進行現場測試，接下來重點是「實測調參 + 通知去重 + 硬體細節補強」。

@@ -65,6 +65,8 @@ def run() -> None:
         angle_threshold_deg=config.FALL_TRUNK_ANGLE_THRESHOLD_DEG,
         hip_shoulder_diff_threshold=config.FALL_HIP_SHOULDER_DIFF_THRESHOLD,
         speed_threshold=config.FALL_SPEED_THRESHOLD,
+        window_size=config.FALL_SCORE_WINDOW_SIZE,
+        score_threshold=config.FALL_SCORE_THRESHOLD,
     )
     state_machine = PostureStateMachine(
         suspect_timeout=config.SUSPECT_FALL_TIMEOUT,
@@ -88,6 +90,7 @@ def run() -> None:
 
     previous_state = state_machine.state
     read_failures = 0
+    last_alert_ts = 0.0
     logger.info("posture_alarm started")
     logger.info(
         "camera backend=%s source=%s size=%sx%s",
@@ -144,10 +147,13 @@ def run() -> None:
 
             if state == PostureState.FALLEN:
                 buzzer.alert_on()
-                db.log_event(event_type="fall", state=state.value, payload={"impact": impact_detected})
-                alert_msg = "Posture alarm: fall detected"
-                line.send(alert_msg)
-                telegram.send(alert_msg)
+                now_ts = time.monotonic()
+                if (now_ts - last_alert_ts) >= config.ALERT_COOLDOWN_SECONDS:
+                    db.log_event(event_type="fall", state=state.value, payload={"impact": impact_detected})
+                    alert_msg = "Posture alarm: fall detected"
+                    line.send(alert_msg)
+                    telegram.send(alert_msg)
+                    last_alert_ts = now_ts
             else:
                 buzzer.alert_off()
 

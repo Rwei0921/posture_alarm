@@ -7,6 +7,9 @@ Last updated: 2026-03-19
 - Built core modules: camera input, person detection, pose extraction, fall classifier, state machine.
 - Added alert/notifier/storage/ui modules with simulation-friendly defaults.
 - Wired everything in `main.py` and validated import health (`All imports OK`).
+- Added alert cooldown (`ALERT_COOLDOWN_SECONDS`) and scored multi-frame fall smoothing.
+- Added test suite (`tests/`) for state machine, classifier, and DB.
+- Added deployment/unit files (`posture_alarm.service`) and tuning guide (`TUNING_GUIDE.md`).
 
 ## Current runtime flow
 `Camera -> PoseEstimator -> PersonDetector/ FallClassifier -> PostureStateMachine -> Alert + Notify + DB + Overlay`
