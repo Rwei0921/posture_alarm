@@ -43,6 +43,8 @@ BED_ROI_Y1 = float(os.getenv("BED_ROI_Y1", "0.35"))
 BED_ROI_X2 = float(os.getenv("BED_ROI_X2", "0.90"))
 BED_ROI_Y2 = float(os.getenv("BED_ROI_Y2", "0.95"))
 BED_ROI_SHOW = os.getenv("BED_ROI_SHOW", "1") == "1"
+BED_ROI_MARK_ON_START = os.getenv("BED_ROI_MARK_ON_START", "0") == "1"
+BED_ROI_MARK_SCALE = float(os.getenv("BED_ROI_MARK_SCALE", "0.5"))
 
 # State machine timing (seconds)
 SUSPECT_FALL_TIMEOUT = float(os.getenv("SUSPECT_FALL_TIMEOUT", "2.0"))

@@ -36,6 +36,74 @@ def _in_bed_roi(hip_center: tuple[float, float]) -> bool:
     )
 
 
+def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
+    scale = scale if scale > 0 else 1.0
+    window = "Mark BED ROI"
+
+    logger.info("BED ROI marker: SPACE=select, Q=skip")
+    selected: tuple[float, float, float, float] | None = None
+
+    while True:
+        ok, frame = cam.read_frame()
+        if not ok:
+            time.sleep(0.05)
+            continue
+
+        preview = frame.copy()
+        if selected is not None:
+            x1, y1, x2, y2 = selected
+            h, w = preview.shape[:2]
+            p1 = (int(x1 * w), int(y1 * h))
+            p2 = (int(x2 * w), int(y2 * h))
+            cv2.rectangle(preview, p1, p2, (0, 170, 255), 2)
+
+        if scale != 1.0:
+            preview = cv2.resize(preview, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+
+        cv2.putText(
+            preview,
+            "SPACE: select BED ROI  |  Q: continue",
+            (20, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            2,
+            cv2.LINE_AA,
+        )
+        cv2.imshow(window, preview)
+
+        key = cv2.waitKey(1) & 0xFF
+        if key in (ord("q"), ord("Q"), 27):
+            break
+
+        if key == 32:
+            frozen = frame
+            if scale != 1.0:
+                frozen = cv2.resize(frame, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+
+            roi = tuple(cv2.selectROI(window, frozen, fromCenter=False, showCrosshair=True))
+            x, y, w, h = int(roi[0]), int(roi[1]), int(roi[2]), int(roi[3])
+            if w <= 0 or h <= 0:
+                continue
+
+            fh, fw = frame.shape[:2]
+            x1 = max(0.0, min(1.0, (x / scale) / fw))
+            y1 = max(0.0, min(1.0, (y / scale) / fh))
+            x2 = max(0.0, min(1.0, ((x + w) / scale) / fw))
+            y2 = max(0.0, min(1.0, ((y + h) / scale) / fh))
+            selected = (x1, y1, x2, y2)
+
+            config.BED_ROI_ENABLED = True
+            config.BED_ROI_X1 = x1
+            config.BED_ROI_Y1 = y1
+            config.BED_ROI_X2 = x2
+            config.BED_ROI_Y2 = y2
+            logger.info("BED ROI set to x1=%.4f y1=%.4f x2=%.4f y2=%.4f", x1, y1, x2, y2)
+            break
+
+    cv2.destroyWindow(window)
+
+
 def run() -> None:
     logger = setup_logger()
     stop_requested = False
@@ -99,6 +167,8 @@ def run() -> None:
     cv2 = None
     if config.SHOW_WINDOW:
         cv2 = _load_cv2()
+        if config.BED_ROI_MARK_ON_START:
+            _interactive_mark_bed_roi(cam, cv2, config.BED_ROI_MARK_SCALE, logger)
 
     previous_state = state_machine.state
     read_failures = 0
@@ -111,6 +181,14 @@ def run() -> None:
         config.CAMERA_WIDTH,
         config.CAMERA_HEIGHT,
     )
+    if config.BED_ROI_ENABLED:
+        logger.info(
+            "bed roi enabled: x1=%.3f y1=%.3f x2=%.3f y2=%.3f",
+            config.BED_ROI_X1,
+            config.BED_ROI_Y1,
+            config.BED_ROI_X2,
+            config.BED_ROI_Y2,
+        )
 
     try:
         while not stop_requested:

@@ -117,6 +117,12 @@ python mark_bed_roi.py
 python mark_bed_roi.py --run-main
 ```
 
+> 或整合在 `main.py` 內（啟動時先標記床區）：
+```bash
+export BED_ROI_MARK_ON_START=1
+python main.py
+```
+
 4. 手動測試項目
 - 畫面是否正常讀取
 - 是否能看到狀態字樣與關鍵點
