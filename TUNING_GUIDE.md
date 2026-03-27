@@ -70,6 +70,16 @@ python -c "from storage.reporter import Reporter; r=Reporter('data/events.db','r
 4. Label false positives and false negatives.
 5. Adjust one parameter group at a time, re-test, and compare results.
 
+### BED ROI marking helper
+
+Use the interactive marker:
+
+```bash
+python mark_bed_roi.py
+```
+
+Then copy the printed `BED_ROI_*` exports into your runtime profile.
+
 ## 5. Common troubleshooting
 
 - Too many false positives from objects: increase `POSE_VISIBILITY_THRESHOLD`, `MIN_VISIBLE_KEYPOINTS`, and `FALL_SCORE_THRESHOLD`.

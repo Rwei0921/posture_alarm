@@ -29,6 +29,7 @@ Camera
 ### Root
 - `config.py`：全域設定（相機、閾值、通知、資料路徑）
 - `main.py`：主迴圈與模組整合
+- `mark_bed_roi.py`：手動標記床區 ROI 工具
 - `requirements.txt`：已改為 MediaPipe/OpenCV/requests 等依賴
 - `structure.txt`：說明已更新為 MediaPipe 人體偵測語意
 - `posture_alarm.service`：systemd 無頭部署範本
@@ -104,6 +105,11 @@ export CAMERA_BACKEND=rpicam
 export CAMERA_WIDTH=640
 export CAMERA_HEIGHT=480
 python main.py
+```
+
+> 床區 ROI 手動標記：
+```bash
+python mark_bed_roi.py
 ```
 
 4. 手動測試項目

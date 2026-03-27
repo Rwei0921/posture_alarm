@@ -1,5 +1,6 @@
 posture_alarm/
 ├─ main.py                       # 主程式：流程控制、排程
+├─ mark_bed_roi.py               # 床區 ROI 手動標記工具
 ├─ config.py                     # 全域設定（閾值、時間、路徑）
 ├─ requirements.txt
 ├─ posture_alarm.service         # systemd 服務單元

@@ -177,6 +177,14 @@ def run() -> None:
             frame = overlay.draw_status(frame, state.value, warning=state == PostureState.FALLEN)
             if landmarks:
                 frame = overlay.draw_landmarks(frame, landmarks)
+            if config.BED_ROI_ENABLED and config.BED_ROI_SHOW:
+                frame = overlay.draw_bed_roi(
+                    frame,
+                    config.BED_ROI_X1,
+                    config.BED_ROI_Y1,
+                    config.BED_ROI_X2,
+                    config.BED_ROI_Y2,
+                )
             if state == PostureState.FALLEN:
                 frame = overlay.draw_alert(frame, "FALL DETECTED")
 

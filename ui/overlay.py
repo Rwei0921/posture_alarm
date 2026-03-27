@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import Any
 
 
@@ -13,9 +14,7 @@ class Overlay:
     @staticmethod
     def _load_cv2() -> Any:
         try:
-            import cv2
-
-            return cv2
+            return importlib.import_module("cv2")
         except Exception as exc:  # pragma: no cover
             raise RuntimeError("OpenCV is required for Overlay") from exc
 
@@ -59,4 +58,30 @@ class Overlay:
             x = int(lm["x"] * w)
             y = int(lm["y"] * h)
             cv2.circle(frame, (x, y), 3, (255, 180, 0), -1)
+        return frame
+
+    def draw_bed_roi(
+        self,
+        frame: Any,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        label: str = "BED ROI",
+    ) -> Any:
+        cv2 = self._load_cv2()
+        h, w = frame.shape[:2]
+        p1 = (int(max(0.0, min(1.0, x1)) * w), int(max(0.0, min(1.0, y1)) * h))
+        p2 = (int(max(0.0, min(1.0, x2)) * w), int(max(0.0, min(1.0, y2)) * h))
+        cv2.rectangle(frame, p1, p2, (0, 170, 255), 2)
+        cv2.putText(
+            frame,
+            label,
+            (p1[0], max(20, p1[1] - 8)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            self.font_scale * 0.8,
+            (0, 170, 255),
+            max(1, self.thickness - 1),
+            cv2.LINE_AA,
+        )
         return frame
