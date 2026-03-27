@@ -7,9 +7,9 @@ from pathlib import Path
 
 # Camera
 CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "0")
-CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "1280"))
-CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "720"))
-CAMERA_BACKEND = os.getenv("CAMERA_BACKEND", "auto")
+CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "640"))
+CAMERA_HEIGHT = int(os.getenv("CAMERA_HEIGHT", "480"))
+CAMERA_BACKEND = os.getenv("CAMERA_BACKEND", "rpicam")
 CAMERA_WARMUP_FRAMES = int(os.getenv("CAMERA_WARMUP_FRAMES", "10"))
 CAMERA_READ_RETRY = int(os.getenv("CAMERA_READ_RETRY", "3"))
 CAMERA_MAX_READ_FAILURES = int(os.getenv("CAMERA_MAX_READ_FAILURES", "60"))
@@ -43,7 +43,7 @@ BED_ROI_Y1 = float(os.getenv("BED_ROI_Y1", "0.35"))
 BED_ROI_X2 = float(os.getenv("BED_ROI_X2", "0.90"))
 BED_ROI_Y2 = float(os.getenv("BED_ROI_Y2", "0.95"))
 BED_ROI_SHOW = os.getenv("BED_ROI_SHOW", "1") == "1"
-BED_ROI_MARK_ON_START = os.getenv("BED_ROI_MARK_ON_START", "0") == "1"
+BED_ROI_MARK_ON_START = os.getenv("BED_ROI_MARK_ON_START", "1") == "1"
 BED_ROI_MARK_SCALE = float(os.getenv("BED_ROI_MARK_SCALE", "0.5"))
 
 # State machine timing (seconds)
