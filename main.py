@@ -43,6 +43,7 @@ def _in_bed_roi(hip_center: tuple[float, float]) -> bool:
 def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
     scale = scale if scale > 0 else 1.0
     window = "Mark BED ROI"
+    window_initialized = False
 
     logger.info("BED ROI marker: SPACE=select, Q=skip")
     selected: tuple[float, float, float, float] | None = None
@@ -52,6 +53,12 @@ def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
         if not ok:
             time.sleep(0.05)
             continue
+
+        if not window_initialized:
+            h, w = frame.shape[:2]
+            cv2.namedWindow(window, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window, int(w * scale), int(h * scale))
+            window_initialized = True
 
         preview = frame.copy()
         if selected is not None:
@@ -177,6 +184,13 @@ def run() -> None:
             logger.warning("BED_ROI_MARK_ON_START=1 but OpenCV GUI is unavailable")
         else:
             _interactive_mark_bed_roi(cam, cv2, config.BED_ROI_MARK_SCALE, logger)
+
+    if config.SHOW_WINDOW and cv2 is not None:
+        display_scale = config.DISPLAY_SCALE if config.DISPLAY_SCALE > 0 else 1.0
+        window_w = int(config.CAMERA_WIDTH * display_scale)
+        window_h = int(config.CAMERA_HEIGHT * display_scale)
+        cv2.namedWindow("posture_alarm", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("posture_alarm", max(window_w, 320), max(window_h, 240))
 
     previous_state = state_machine.state
     read_failures = 0
