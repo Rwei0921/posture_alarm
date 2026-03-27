@@ -15,6 +15,7 @@ def _load_cv2():
 
 def main() -> None:
     cv2 = _load_cv2()
+    display_scale = 0.5
     cam = Camera(
         config.CAMERA_SOURCE,
         config.CAMERA_WIDTH,
@@ -31,6 +32,7 @@ def main() -> None:
     print("Press SPACE to freeze frame and draw BED ROI.")
     print("Inside ROI selector: drag rectangle and press ENTER/SPACE to confirm, ESC to cancel.")
     print("Press Q to exit without changes.")
+    print(f"Display scale: {display_scale}")
 
     selected = None
 
@@ -48,6 +50,15 @@ def main() -> None:
                 p1 = (int(x1 * w), int(y1 * h))
                 p2 = (int(x2 * w), int(y2 * h))
                 cv2.rectangle(preview, p1, p2, (0, 170, 255), 2)
+
+            if display_scale != 1.0:
+                preview = cv2.resize(
+                    preview,
+                    None,
+                    fx=display_scale,
+                    fy=display_scale,
+                    interpolation=cv2.INTER_AREA,
+                )
 
             cv2.putText(
                 preview,
@@ -67,14 +78,24 @@ def main() -> None:
                 break
 
             if key == 32:  # space
-                roi = cv2.selectROI(window, frame, fromCenter=False, showCrosshair=True)
+                frozen = frame
+                if display_scale != 1.0:
+                    frozen = cv2.resize(
+                        frame,
+                        None,
+                        fx=display_scale,
+                        fy=display_scale,
+                        interpolation=cv2.INTER_AREA,
+                    )
+
+                roi = cv2.selectROI(window, frozen, fromCenter=False, showCrosshair=True)
                 x, y, w, h = [int(v) for v in roi]
                 if w > 0 and h > 0:
                     fh, fw = frame.shape[:2]
-                    x1 = x / fw
-                    y1 = y / fh
-                    x2 = (x + w) / fw
-                    y2 = (y + h) / fh
+                    x1 = max(0.0, min(1.0, (x / display_scale) / fw))
+                    y1 = max(0.0, min(1.0, (y / display_scale) / fh))
+                    x2 = max(0.0, min(1.0, ((x + w) / display_scale) / fw))
+                    y2 = max(0.0, min(1.0, ((y + h) / display_scale) / fh))
                     selected = (x1, y1, x2, y2)
                     print("\nUse these environment variables:")
                     print("export BED_ROI_ENABLED=1")
