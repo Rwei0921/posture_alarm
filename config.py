@@ -17,7 +17,7 @@ RPICAM_FPS = int(os.getenv("RPICAM_FPS", "15"))
 RPICAM_TIMEOUT_MS = int(os.getenv("RPICAM_TIMEOUT_MS", "800"))
 RPICAM_BUFFER_MAX_BYTES = int(os.getenv("RPICAM_BUFFER_MAX_BYTES", str(4 * 1024 * 1024)))
 SHOW_WINDOW = os.getenv("SHOW_WINDOW", "1") == "1"
-DISPLAY_SCALE = float(os.getenv("DISPLAY_SCALE", "1.0"))
+DISPLAY_SCALE = float(os.getenv("DISPLAY_SCALE", "0.5"))
 
 # MediaPipe / pose
 MP_STATIC_IMAGE_MODE = False
