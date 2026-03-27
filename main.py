@@ -391,6 +391,10 @@ def run() -> None:
                     logger.info("exit requested by keyboard")
                     stop_requested = True
                     break
+                if key in (ord("m"), ord("M")):
+                    logger.info("manual BED ROI re-mark requested")
+                    _interactive_mark_bed_roi(cam, cv2, config.BED_ROI_MARK_SCALE, logger)
+                    continue
                 if cv2.getWindowProperty("posture_alarm", cv2.WND_PROP_VISIBLE) < 1:
                     logger.info("exit requested by window close")
                     stop_requested = True
