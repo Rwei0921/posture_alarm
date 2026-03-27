@@ -14,6 +14,9 @@ from vision.camera import Camera
 
 
 def _load_cv2():
+    if os.name != "nt":
+        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+        os.environ.setdefault("QT_QPA_FONTDIR", "/usr/share/fonts/truetype/dejavu")
     return importlib.import_module("cv2")
 
 

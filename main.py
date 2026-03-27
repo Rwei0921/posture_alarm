@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import signal
 import time
 
@@ -23,6 +24,9 @@ from vision.pose_estimator import PoseEstimator
 
 
 def _load_cv2():
+    if os.name != "nt":
+        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+        os.environ.setdefault("QT_QPA_FONTDIR", "/usr/share/fonts/truetype/dejavu")
     return importlib.import_module("cv2")
 
 
