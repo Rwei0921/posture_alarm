@@ -25,8 +25,8 @@ posture_alarm/
 ├─ alert/
 │  ├─ __init__.py
 │  ├─ buzzer_led.py              # 蜂鳴器/LED 警報
-│  ├─ notifier_line.py           # Line Notify / Line Bot
-│  ├─ notifier_telegram.py       # Telegram Bot
+│  ├─ notifier_line.py           # LINE Messaging API 通知
+│  ├─ notifier_discord.py        # Discord Webhook 通知
 │
 ├─ storage/
 │  ├─ __init__.py

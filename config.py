@@ -71,9 +71,9 @@ ALERT_ON_FALL_ONLY = os.getenv("ALERT_ON_FALL_ONLY", "1") == "1"
 ALERT_COOLDOWN_SECONDS = float(os.getenv("ALERT_COOLDOWN_SECONDS", "60"))
 
 # Notifier
-LINE_NOTIFY_TOKEN = os.getenv("LINE_NOTIFY_TOKEN", "")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", os.getenv("LINE_NOTIFY_TOKEN", ""))
+LINE_TARGET_ID = os.getenv("LINE_TARGET_ID", "")
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 
 # Storage
 BASE_DIR = Path(__file__).resolve().parent

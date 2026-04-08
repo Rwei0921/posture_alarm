@@ -10,8 +10,8 @@ from typing import Any
 
 import config
 from alert.buzzer_led import BuzzerLED
+from alert.notifier_discord import DiscordNotifier
 from alert.notifier_line import LineNotifier
-from alert.notifier_telegram import TelegramNotifier
 from core.state_machine import PostureState, PostureStateMachine
 from core.utils import setup_logger
 from sensors.imu_mpu6050 import IMU_MPU6050
@@ -245,8 +245,11 @@ def run() -> None:
     imu = IMU_MPU6050(simulate=config.SIMULATE_IMU, shock_threshold_g=config.IMU_SHOCK_THRESHOLD_G)
 
     buzzer = BuzzerLED(simulate=config.SIMULATE_GPIO)
-    line = LineNotifier(config.LINE_NOTIFY_TOKEN)
-    telegram = TelegramNotifier(config.TELEGRAM_BOT_TOKEN, config.TELEGRAM_CHAT_ID)
+    line = LineNotifier(
+        channel_access_token=config.LINE_CHANNEL_ACCESS_TOKEN,
+        to=config.LINE_TARGET_ID,
+    )
+    discord = DiscordNotifier(config.DISCORD_WEBHOOK_URL)
 
     db = EventDB(config.DB_PATH)
     reporter = Reporter(config.DB_PATH, str(config.REPORT_DIR))
@@ -353,7 +356,7 @@ def run() -> None:
                     db.log_event(event_type="fall", state=state.value, payload={"impact": impact_detected})
                     alert_msg = "Posture alarm: fall detected"
                     line.send(alert_msg)
-                    telegram.send(alert_msg)
+                    discord.send(alert_msg)
                     last_alert_ts = now_ts
             else:
                 buzzer.alert_off()

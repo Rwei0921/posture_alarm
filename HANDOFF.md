@@ -32,8 +32,8 @@ Optional environment variables:
 - `CAMERA_BACKEND` (`auto` / `rpicam` / `picamera2` / `opencv`)
 - `CAMERA_SOURCE`, `SHOW_WINDOW`
 - `SIMULATE_IMU`, `SIMULATE_GPIO`
-- `LINE_NOTIFY_TOKEN`
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+- `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_TARGET_ID`
+- `DISCORD_WEBHOOK_URL`
 
 For Raspberry Pi Camera Module 3, prefer `CAMERA_BACKEND=rpicam`.
 

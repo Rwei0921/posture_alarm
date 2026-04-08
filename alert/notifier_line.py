@@ -1,4 +1,4 @@
-"""LINE Notify sender."""
+"""LINE Messaging API notifier."""
 
 from __future__ import annotations
 
@@ -6,21 +6,33 @@ from typing import Any
 
 
 class LineNotifier:
-    def __init__(self, token: str = "", timeout: float = 5.0) -> None:
-        self.token = token
+    def __init__(self, channel_access_token: str = "", to: str = "", timeout: float = 5.0) -> None:
+        self.channel_access_token = channel_access_token
+        self.to = to
         self.timeout = timeout
 
     def send(self, message: str) -> bool:
-        if not self.token:
+        if not self.channel_access_token or not self.to:
             return False
         requests = self._load_requests()
-        headers = {"Authorization": f"Bearer {self.token}"}
-        data = {"message": message}
+        headers = {
+            "Authorization": f"Bearer {self.channel_access_token}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "to": self.to,
+            "messages": [
+                {
+                    "type": "text",
+                    "text": message,
+                }
+            ],
+        }
         try:
             response = requests.post(
-                "https://notify-api.line.me/api/notify",
+                "https://api.line.me/v2/bot/message/push",
                 headers=headers,
-                data=data,
+                json=payload,
                 timeout=self.timeout,
             )
             return bool(response.ok)
