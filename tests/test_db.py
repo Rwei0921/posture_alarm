@@ -29,10 +29,12 @@ def test_file_backed_db_creates_parent_directory_and_file(tmp_path):
     try:
         event_id = db.log_event("state_change", "NORMAL", payload={"source": "test"})
         assert event_id > 0
+        rows = db.fetch_recent(limit=1)
     finally:
         db.close()
 
     assert db_path.exists()
+    assert rows[0]["ts"].endswith("+08:00")
 
 
 def test_reporter_bootstraps_fresh_db_and_writes_header_only(tmp_path):

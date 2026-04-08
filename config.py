@@ -5,6 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# Timezone
+APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Taipei")
+
 # Camera
 CAMERA_SOURCE = os.getenv("CAMERA_SOURCE", "0")
 CAMERA_WIDTH = int(os.getenv("CAMERA_WIDTH", "640"))

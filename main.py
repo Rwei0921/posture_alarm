@@ -13,7 +13,7 @@ from alert.buzzer_led import BuzzerLED
 from alert.notifier_discord import DiscordNotifier
 from alert.notifier_line import LineNotifier
 from core.state_machine import PostureState, PostureStateMachine
-from core.utils import setup_logger
+from core.utils import build_fall_alert_message, display_timestamp_from_iso, now_timestamp, setup_logger
 from sensors.imu_mpu6050 import IMU_MPU6050
 from storage.db_sqlite import EventDB
 from storage.reporter import Reporter
@@ -353,8 +353,14 @@ def run() -> None:
                 buzzer.alert_on()
                 now_ts = time.monotonic()
                 if (now_ts - last_alert_ts) >= config.ALERT_COOLDOWN_SECONDS:
-                    db.log_event(event_type="fall", state=state.value, payload={"impact": impact_detected})
-                    alert_msg = "Posture alarm: fall detected"
+                    event_ts = now_timestamp()
+                    db.log_event(
+                        event_type="fall",
+                        state=state.value,
+                        payload={"impact": impact_detected},
+                        ts=event_ts,
+                    )
+                    alert_msg = build_fall_alert_message(display_timestamp_from_iso(event_ts))
                     line.send(alert_msg)
                     discord.send(alert_msg)
                     last_alert_ts = now_ts

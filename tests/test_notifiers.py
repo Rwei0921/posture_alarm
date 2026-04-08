@@ -31,7 +31,7 @@ def test_line_notifier_posts_push_message_payload():
     notifier = LineNotifier(channel_access_token="token", to="U123")
     notifier._load_requests = lambda: fake_requests
 
-    sent = notifier.send("fall detected")
+    sent = notifier.send("姿勢警報：偵測到跌倒，時間：2026年04月09日 02:14:32")
 
     assert sent is True
     assert fake_requests.calls == [
@@ -43,7 +43,7 @@ def test_line_notifier_posts_push_message_payload():
             },
             "json": {
                 "to": "U123",
-                "messages": [{"type": "text", "text": "fall detected"}],
+                "messages": [{"type": "text", "text": "姿勢警報：偵測到跌倒，時間：2026年04月09日 02:14:32"}],
             },
             "timeout": 5.0,
         }
@@ -76,13 +76,13 @@ def test_discord_notifier_posts_webhook_payload():
     notifier = DiscordNotifier(webhook_url="https://discord.example/webhook")
     notifier._load_requests = lambda: fake_requests
 
-    sent = notifier.send("fall detected")
+    sent = notifier.send("姿勢警報：偵測到跌倒，時間：2026年04月09日 02:14:32")
 
     assert sent is True
     assert fake_requests.calls == [
         {
             "url": "https://discord.example/webhook",
-            "json": {"content": "fall detected"},
+            "json": {"content": "姿勢警報：偵測到跌倒，時間：2026年04月09日 02:14:32"},
             "timeout": 5.0,
         }
     ]
