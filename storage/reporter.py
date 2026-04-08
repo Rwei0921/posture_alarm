@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import csv
-import sqlite3
 from datetime import date, datetime, timedelta
 from pathlib import Path
+
+from storage.db_sqlite import connect_event_db
 
 
 class Reporter:
@@ -34,8 +35,7 @@ class Reporter:
         return output
 
     def _fetch_range(self, start_iso: str, end_iso: str) -> list[dict[str, str]]:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
+        conn = connect_event_db(self.db_path)
         try:
             rows = conn.execute(
                 """

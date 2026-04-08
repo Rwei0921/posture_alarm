@@ -10,27 +10,31 @@ from typing import Any
 from core.utils import now_timestamp
 
 
+def connect_event_db(db_path: str) -> sqlite3.Connection:
+    if db_path != ":memory:":
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            state TEXT NOT NULL,
+            payload TEXT
+        )
+        """
+    )
+    conn.commit()
+    return conn
+
+
 class EventDB:
     def __init__(self, db_path: str) -> None:
         self.db_path = db_path
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row
-        self._init_schema()
-
-    def _init_schema(self) -> None:
-        self.conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ts TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                state TEXT NOT NULL,
-                payload TEXT
-            )
-            """
-        )
-        self.conn.commit()
+        self.conn = connect_event_db(self.db_path)
 
     def log_event(
         self,
