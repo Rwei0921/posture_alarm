@@ -21,13 +21,13 @@ class FallFeatures:
 class FallClassifier:
     def __init__(
         self,
-        angle_threshold_deg: float = 55.0,
-        hip_shoulder_diff_threshold: float = 0.12,
-        speed_threshold: float = 0.28,
-        window_size: int = 5,
-        score_threshold: float = 0.6,
-        min_hip_drop: float = 0.12,
-        event_window_seconds: float = 1.5,
+        angle_threshold_deg: float = 60.0,
+        hip_shoulder_diff_threshold: float = 0.10,
+        speed_threshold: float = 0.30,
+        window_size: int = 6,
+        score_threshold: float = 0.67,
+        min_hip_drop: float = 0.15,
+        event_window_seconds: float = 1.0,
     ) -> None:
         self.angle_threshold_deg = angle_threshold_deg
         self.hip_shoulder_diff_threshold = hip_shoulder_diff_threshold

@@ -7,13 +7,13 @@ This guide explains how to tune the main posture and fall parameters for hospita
 Start with these values:
 
 ```bash
-export FALL_TRUNK_ANGLE_THRESHOLD_DEG=55
-export FALL_HIP_SHOULDER_DIFF_THRESHOLD=0.12
-export FALL_SPEED_THRESHOLD=0.28
-export FALL_SCORE_WINDOW_SIZE=5
-export FALL_SCORE_THRESHOLD=0.6
-export FALL_EVENT_MIN_HIP_DROP=0.12
-export FALL_EVENT_WINDOW_SECONDS=1.5
+export FALL_TRUNK_ANGLE_THRESHOLD_DEG=60
+export FALL_HIP_SHOULDER_DIFF_THRESHOLD=0.10
+export FALL_SPEED_THRESHOLD=0.30
+export FALL_SCORE_WINDOW_SIZE=6
+export FALL_SCORE_THRESHOLD=0.67
+export FALL_EVENT_MIN_HIP_DROP=0.15
+export FALL_EVENT_WINDOW_SECONDS=1.0
 export POSE_VISIBILITY_THRESHOLD=0.6
 export MIN_VISIBLE_KEYPOINTS=10
 export BED_ROI_ENABLED=1
@@ -83,6 +83,6 @@ Then copy the printed `BED_ROI_*` exports into your runtime profile.
 ## 5. Common troubleshooting
 
 - Too many false positives from objects: increase `POSE_VISIBILITY_THRESHOLD`, `MIN_VISIBLE_KEYPOINTS`, and `FALL_SCORE_THRESHOLD`.
-- Patient lying down on bed still triggers fall: increase `FALL_EVENT_MIN_HIP_DROP`, reduce `FALL_EVENT_WINDOW_SECONDS`, and calibrate `BED_ROI_*`.
+- Patient lying down on bed still triggers fall: increase `FALL_TRUNK_ANGLE_THRESHOLD_DEG`, increase `FALL_EVENT_MIN_HIP_DROP`, reduce `FALL_EVENT_WINDOW_SECONDS`, and calibrate `BED_ROI_*`.
 - Missed real falls: reduce `FALL_TRUNK_ANGLE_THRESHOLD_DEG` or `FALL_SCORE_THRESHOLD` slightly.
 - Slow detection: reduce `FALL_SCORE_WINDOW_SIZE` from 6 to 4-5.
