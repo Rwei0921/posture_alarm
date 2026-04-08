@@ -58,6 +58,13 @@ def test_line_notifier_returns_false_on_request_error():
     assert notifier.send("fall detected") is False
 
 
+def test_line_notifier_returns_false_when_requests_is_missing():
+    notifier = LineNotifier(channel_access_token="token", to="U123")
+    notifier._load_requests = lambda: (_ for _ in ()).throw(ModuleNotFoundError("requests"))
+
+    assert notifier.send("fall detected") is False
+
+
 def test_discord_notifier_returns_false_when_unconfigured():
     notifier = DiscordNotifier()
 
@@ -85,5 +92,12 @@ def test_discord_notifier_returns_false_on_request_error():
     fake_requests = _FakeRequests(should_raise=True)
     notifier = DiscordNotifier(webhook_url="https://discord.example/webhook")
     notifier._load_requests = lambda: fake_requests
+
+    assert notifier.send("fall detected") is False
+
+
+def test_discord_notifier_returns_false_when_requests_is_missing():
+    notifier = DiscordNotifier(webhook_url="https://discord.example/webhook")
+    notifier._load_requests = lambda: (_ for _ in ()).throw(ModuleNotFoundError("requests"))
 
     assert notifier.send("fall detected") is False

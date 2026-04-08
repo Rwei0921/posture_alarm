@@ -14,7 +14,6 @@ class LineNotifier:
     def send(self, message: str) -> bool:
         if not self.channel_access_token or not self.to:
             return False
-        requests = self._load_requests()
         headers = {
             "Authorization": f"Bearer {self.channel_access_token}",
             "Content-Type": "application/json",
@@ -29,6 +28,7 @@ class LineNotifier:
             ],
         }
         try:
+            requests = self._load_requests()
             response = requests.post(
                 "https://api.line.me/v2/bot/message/push",
                 headers=headers,

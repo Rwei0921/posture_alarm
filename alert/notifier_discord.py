@@ -14,10 +14,10 @@ class DiscordNotifier:
         if not self.webhook_url:
             return False
 
-        requests = self._load_requests()
         payload = {"content": message}
 
         try:
+            requests = self._load_requests()
             response = requests.post(self.webhook_url, json=payload, timeout=self.timeout)
             return bool(response.ok)
         except Exception:
