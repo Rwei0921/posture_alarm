@@ -4,7 +4,7 @@ theme: default
 paginate: true
 size: 16:9
 title: 姿態警報系統
-description: 依據姿態警報系統報告書 v2 整理之 Marp 簡報稿
+description: 許哲瑋 尤任豐 顏鴻誠
 style: |
   :root {
     --color-background: #fcfcfc;
@@ -84,8 +84,8 @@ style: |
 
 基於 Raspberry Pi 與 MediaPipe Pose 的跌倒偵測與警報系統
 
-- 報告書版本：v2
-- 簡報形式：Marp 簡約風簡報稿
+- 指導老師:何俊輝
+- 成員:許哲瑋 尤紝豐 顏鴻誠
 
 ---
 
