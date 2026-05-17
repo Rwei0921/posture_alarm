@@ -24,6 +24,17 @@ def _load_env_file(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip())
 
 
+def _load_requests():
+    try:
+        return importlib.import_module("requests")
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "Python package `requests` is not installed in the current environment. "
+            "Run `source .venv/bin/activate && python -m pip install -r requirements.txt`, "
+            "or run this script with `.venv/bin/python test_notify.py`."
+        ) from exc
+
+
 def _post_line(message: str, timeout: float) -> bool:
     token = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "").strip()
     target = os.getenv("LINE_TARGET_ID", "").strip()
@@ -31,7 +42,7 @@ def _post_line(message: str, timeout: float) -> bool:
         print("LINE: skipped, LINE_CHANNEL_ACCESS_TOKEN or LINE_TARGET_ID is empty")
         return False
 
-    requests = importlib.import_module("requests")
+    requests = _load_requests()
 
     response = requests.post(
         "https://api.line.me/v2/bot/message/push",
@@ -57,7 +68,7 @@ def _post_discord(message: str, timeout: float) -> bool:
         print("Discord: skipped, DISCORD_WEBHOOK_URL is empty")
         return False
 
-    requests = importlib.import_module("requests")
+    requests = _load_requests()
 
     response = requests.post(webhook_url, json={"content": message}, timeout=timeout)
     print(f"Discord: HTTP {response.status_code}")
