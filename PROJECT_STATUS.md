@@ -127,6 +127,12 @@ python mark_bed_roi.py
 python mark_bed_roi.py --run-main
 ```
 
+> 展示模式問答設定與一鍵啟動：
+```bash
+python setup_demo.py
+./run_demo.sh
+```
+
 > 或整合在 `main.py` 內（啟動時先標記床區）：
 ```bash
 export BED_ROI_MARK_ON_START=1

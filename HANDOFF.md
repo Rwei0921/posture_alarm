@@ -33,6 +33,10 @@ Last updated: 2026-04-09
 1. Raspberry Pi one-shot install: `./install_rpi.sh`
 2. Start app: `python main.py`
 
+Demo-friendly flow:
+1. Configure interactively: `python setup_demo.py`
+2. Start with generated settings: `./run_demo.sh`
+
 Optional environment variables:
 - `CAMERA_BACKEND` (`auto` / `rpicam` / `picamera2` / `opencv`)
 - `CAMERA_SOURCE`, `SHOW_WINDOW`
