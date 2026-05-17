@@ -33,7 +33,29 @@ class SimulatedToneDevice(SimulatedDevice):
         print(f"{self.name}: TONE {tone:.0f}Hz")
 
 
-def _build_devices(buzzer_pin: int, led_pin: int, simulate: bool, pwm_buzzer: bool):
+class PWMBuzzerAdapter:
+    def __init__(self, device, frequency: float) -> None:
+        self.device = device
+        self.frequency = frequency
+
+    def on(self) -> None:
+        self.play(self.frequency)
+
+    def off(self) -> None:
+        self.stop()
+
+    def play(self, tone: float) -> None:
+        self.device.frequency = tone
+        self.device.value = 0.5
+
+    def stop(self) -> None:
+        self.device.value = 0.0
+
+    def close(self) -> None:
+        self.device.close()
+
+
+def _build_devices(buzzer_pin: int, led_pin: int, simulate: bool, pwm_buzzer: bool, frequency: float):
     if simulate:
         buzzer = SimulatedToneDevice(f"Buzzer GPIO {buzzer_pin}") if pwm_buzzer else SimulatedDevice(f"Buzzer GPIO {buzzer_pin}")
         return buzzer, SimulatedDevice(f"LED GPIO {led_pin}")
@@ -47,9 +69,12 @@ def _build_devices(buzzer_pin: int, led_pin: int, simulate: bool, pwm_buzzer: bo
 
     Buzzer = getattr(gpiozero, "Buzzer")
     LED = getattr(gpiozero, "LED")
-    TonalBuzzer = getattr(gpiozero, "TonalBuzzer")
+    PWMOutputDevice = getattr(gpiozero, "PWMOutputDevice")
     try:
-        buzzer = TonalBuzzer(buzzer_pin) if pwm_buzzer else Buzzer(buzzer_pin)
+        if pwm_buzzer:
+            buzzer = PWMBuzzerAdapter(PWMOutputDevice(buzzer_pin, frequency=frequency), frequency)
+        else:
+            buzzer = Buzzer(buzzer_pin)
         return buzzer, LED(led_pin)
     except Exception as exc:
         raise RuntimeError(
@@ -92,7 +117,7 @@ def run_test(
     pwm_buzzer: bool,
     frequency: float,
 ) -> None:
-    buzzer, led = _build_devices(buzzer_pin, led_pin, simulate, pwm_buzzer)
+    buzzer, led = _build_devices(buzzer_pin, led_pin, simulate, pwm_buzzer, frequency)
 
     print("BZ/LED test starting")
     print(f"Buzzer: BCM GPIO {buzzer_pin}")
