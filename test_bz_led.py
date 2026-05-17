@@ -38,7 +38,15 @@ def _build_devices(buzzer_pin: int, led_pin: int, simulate: bool):
 
     Buzzer = getattr(gpiozero, "Buzzer")
     LED = getattr(gpiozero, "LED")
-    return Buzzer(buzzer_pin), LED(led_pin)
+    try:
+        return Buzzer(buzzer_pin), LED(led_pin)
+    except Exception as exc:
+        raise RuntimeError(
+            "Unable to initialize Raspberry Pi GPIO. Install a pin factory and make sure "
+            "the current user can access GPIO. Try: `sudo apt-get install -y python3-lgpio`, "
+            "then `sudo usermod -aG gpio $USER`, log out/in or reboot, and run this script again. "
+            "For a quick permission check, run with `sudo python test_bz_led.py`."
+        ) from exc
 
 
 def _pulse(device, label: str, duration: float) -> None:

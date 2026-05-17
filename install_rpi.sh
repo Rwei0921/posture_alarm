@@ -31,6 +31,7 @@ $SUDO apt-get install -y \
   i2c-tools \
   v4l-utils \
   rpicam-apps \
+  python3-lgpio \
   python3-opencv \
   python3-picamera2
 
