@@ -157,6 +157,8 @@ python main.py
 - `DISCORD_WEBHOOK_URL`
 - `SIMULATE_IMU`（預設 1）
 - `SIMULATE_GPIO`（預設 0，使用實體 GPIO；設為 1 可改回模擬）
+- `BUZZER_PWM_ENABLED`（預設 1，兩腳被動蜂鳴器使用 PWM）
+- `BUZZER_PWM_FREQUENCY`（預設 2000）
 
 ---
 

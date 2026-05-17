@@ -70,6 +70,8 @@ IMU_SHOCK_THRESHOLD_G = float(os.getenv("IMU_SHOCK_THRESHOLD_G", "1.8"))
 
 # Alert
 SIMULATE_GPIO = os.getenv("SIMULATE_GPIO", "0") == "1"
+BUZZER_PWM_ENABLED = os.getenv("BUZZER_PWM_ENABLED", "1") == "1"
+BUZZER_PWM_FREQUENCY = float(os.getenv("BUZZER_PWM_FREQUENCY", "2000"))
 ALERT_ON_FALL_ONLY = os.getenv("ALERT_ON_FALL_ONLY", "1") == "1"
 ALERT_COOLDOWN_SECONDS = float(os.getenv("ALERT_COOLDOWN_SECONDS", "60"))
 

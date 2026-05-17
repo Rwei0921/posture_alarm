@@ -244,7 +244,11 @@ def run() -> None:
     )
     imu = IMU_MPU6050(simulate=config.SIMULATE_IMU, shock_threshold_g=config.IMU_SHOCK_THRESHOLD_G)
 
-    buzzer = BuzzerLED(simulate=config.SIMULATE_GPIO)
+    buzzer = BuzzerLED(
+        simulate=config.SIMULATE_GPIO,
+        buzzer_pwm=config.BUZZER_PWM_ENABLED,
+        buzzer_frequency=config.BUZZER_PWM_FREQUENCY,
+    )
     line = LineNotifier(
         channel_access_token=config.LINE_CHANNEL_ACCESS_TOKEN,
         to=config.LINE_TARGET_ID,
