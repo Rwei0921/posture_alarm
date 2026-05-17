@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import os
 from datetime import datetime
 from pathlib import Path
@@ -30,7 +31,7 @@ def _post_line(message: str, timeout: float) -> bool:
         print("LINE: skipped, LINE_CHANNEL_ACCESS_TOKEN or LINE_TARGET_ID is empty")
         return False
 
-    import requests
+    requests = importlib.import_module("requests")
 
     response = requests.post(
         "https://api.line.me/v2/bot/message/push",
@@ -56,7 +57,7 @@ def _post_discord(message: str, timeout: float) -> bool:
         print("Discord: skipped, DISCORD_WEBHOOK_URL is empty")
         return False
 
-    import requests
+    requests = importlib.import_module("requests")
 
     response = requests.post(webhook_url, json={"content": message}, timeout=timeout)
     print(f"Discord: HTTP {response.status_code}")
