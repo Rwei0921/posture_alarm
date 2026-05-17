@@ -36,6 +36,7 @@ Last updated: 2026-04-09
 Demo-friendly flow:
 1. Configure interactively: `python setup_demo.py`
 2. Start with generated settings: `./run_demo.sh`
+3. Test notification delivery only: `python test_notify.py`
 
 Optional environment variables:
 - `CAMERA_BACKEND` (`auto` / `rpicam` / `picamera2` / `opencv`)

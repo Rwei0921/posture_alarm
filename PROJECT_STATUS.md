@@ -133,6 +133,11 @@ python setup_demo.py
 ./run_demo.sh
 ```
 
+> 單獨測試 LINE / Discord 通知：
+```bash
+python test_notify.py
+```
+
 > 或整合在 `main.py` 內（啟動時先標記床區）：
 ```bash
 export BED_ROI_MARK_ON_START=1
