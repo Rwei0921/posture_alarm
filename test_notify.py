@@ -7,6 +7,7 @@ import importlib
 import os
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 
 DEMO_ENV_PATH = Path(__file__).resolve().parent / "demo.env"
@@ -68,9 +69,23 @@ def _post_discord(message: str, timeout: float) -> bool:
         print("Discord: skipped, DISCORD_WEBHOOK_URL is empty")
         return False
 
+    parsed_url = urlparse(webhook_url)
+    if parsed_url.scheme != "https" or not parsed_url.netloc:
+        print("Discord: invalid webhook URL. It should start with https://discord.com/api/webhooks/...")
+        return False
+
+    if "discord.com" not in parsed_url.netloc and "discordapp.com" not in parsed_url.netloc:
+        print(f"Discord: suspicious webhook host `{parsed_url.netloc}`")
+        print("Discord webhook should look like https://discord.com/api/webhooks/...")
+        return False
+
     requests = _load_requests()
 
-    response = requests.post(webhook_url, json={"content": message}, timeout=timeout)
+    try:
+        response = requests.post(webhook_url, json={"content": message}, timeout=timeout)
+    except Exception as exc:
+        print(f"Discord: request failed: {exc}")
+        return False
     print(f"Discord: HTTP {response.status_code}")
     if response.text:
         print(f"Discord response: {response.text[:500]}")
