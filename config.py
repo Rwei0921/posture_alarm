@@ -75,6 +75,10 @@ BUZZER_PWM_FREQUENCY = float(os.getenv("BUZZER_PWM_FREQUENCY", "2000"))
 ALERT_ON_FALL_ONLY = os.getenv("ALERT_ON_FALL_ONLY", "1") == "1"
 ALERT_COOLDOWN_SECONDS = float(os.getenv("ALERT_COOLDOWN_SECONDS", "60"))
 
+# Logging
+LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "1") == "1"
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", str(Path(__file__).resolve().parent / "data" / "posture_alarm.log"))
+
 # Notifier
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
 LINE_TARGET_ID = os.getenv("LINE_TARGET_ID", "")

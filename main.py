@@ -280,6 +280,10 @@ def run() -> None:
     read_failures = 0
     last_alert_ts = 0.0
     logger.info("posture_alarm started")
+    if config.LOG_FILE_ENABLED:
+        logger.info("file logging enabled: %s", config.LOG_FILE_PATH)
+    else:
+        logger.warning("file logging disabled: LOG_FILE_ENABLED=0")
     logger.info(
         "camera backend=%s source=%s size=%sx%s",
         config.CAMERA_BACKEND,
@@ -287,6 +291,22 @@ def run() -> None:
         config.CAMERA_WIDTH,
         config.CAMERA_HEIGHT,
     )
+    logger.info(
+        "gpio simulate=%s buzzer_pwm=%s buzzer_frequency=%.0fHz",
+        config.SIMULATE_GPIO,
+        config.BUZZER_PWM_ENABLED,
+        config.BUZZER_PWM_FREQUENCY,
+    )
+    line_configured = bool(config.LINE_CHANNEL_ACCESS_TOKEN and config.LINE_TARGET_ID)
+    discord_configured = bool(config.DISCORD_WEBHOOK_URL)
+    if line_configured:
+        logger.info("LINE notifier enabled")
+    else:
+        logger.warning("LINE notifier disabled: set LINE_CHANNEL_ACCESS_TOKEN and LINE_TARGET_ID")
+    if discord_configured:
+        logger.info("Discord notifier enabled")
+    else:
+        logger.warning("Discord notifier disabled: set DISCORD_WEBHOOK_URL")
     if config.BED_ROI_ENABLED:
         if config.BED_POLYGON_ENABLED:
             pts = _bed_polygon_points()
@@ -365,8 +385,13 @@ def run() -> None:
                         ts=event_ts,
                     )
                     alert_msg = build_fall_alert_message(display_timestamp_from_iso(event_ts))
-                    line.send(alert_msg)
-                    discord.send(alert_msg)
+                    line_sent = line.send(alert_msg)
+                    discord_sent = discord.send(alert_msg)
+                    logger.info(
+                        "fall alert sent: line=%s discord=%s",
+                        line_sent,
+                        discord_sent,
+                    )
                     last_alert_ts = now_ts
             else:
                 buzzer.alert_off()

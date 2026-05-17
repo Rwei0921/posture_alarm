@@ -40,6 +40,7 @@ Optional environment variables:
 - `SIMULATE_IMU`, `SIMULATE_GPIO`
 - `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_TARGET_ID`
 - `DISCORD_WEBHOOK_URL`
+- `LOG_FILE_ENABLED`, `LOG_FILE_PATH`
 
 For Raspberry Pi Camera Module 3, prefer `CAMERA_BACKEND=rpicam`.
 

@@ -155,6 +155,8 @@ python main.py
 - `LINE_CHANNEL_ACCESS_TOKEN`
 - `LINE_TARGET_ID`
 - `DISCORD_WEBHOOK_URL`
+- `LOG_FILE_ENABLED`（預設 1）
+- `LOG_FILE_PATH`（預設 `data/posture_alarm.log`）
 - `SIMULATE_IMU`（預設 1）
 - `SIMULATE_GPIO`（預設 0，使用實體 GPIO；設為 1 可改回模擬）
 - `BUZZER_PWM_ENABLED`（預設 1，兩腳被動蜂鳴器使用 PWM）
