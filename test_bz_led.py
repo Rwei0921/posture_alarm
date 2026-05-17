@@ -24,6 +24,9 @@ class SimulatedDevice:
     def close(self) -> None:
         print(f"{self.name}: CLOSED")
 
+    def stop(self) -> None:
+        self.off()
+
 
 class SimulatedToneDevice(SimulatedDevice):
     def play(self, tone: float) -> None:
@@ -69,7 +72,7 @@ def _tone(device, frequency: float, duration: float) -> None:
     print(f"Testing Buzzer tone at {frequency:.0f}Hz for {duration:.1f}s")
     device.play(frequency)
     time.sleep(duration)
-    device.stop()
+    _stop_device(device)
     time.sleep(0.3)
 
 
@@ -107,7 +110,7 @@ def run_test(
             print(f"Testing both devices blink {index + 1}/{repeat}")
             led.on()
             if pwm_buzzer:
-                buzzer.play(frequency)
+                getattr(buzzer, "play")(frequency)
             else:
                 buzzer.on()
             time.sleep(duration)
