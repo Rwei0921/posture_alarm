@@ -19,7 +19,7 @@ def _ask_yes_no(prompt: str, default: bool = True) -> bool:
     value = input(f"{prompt} ({default_text}): ").strip().lower()
     if not value:
         return default
-    return value in {"y", "yes", "1", "true", "是", "好"}
+    return value in {"y", "yes", "1", "true"}
 
 
 def _env_line(key: str, value: str) -> str:
@@ -27,19 +27,19 @@ def _env_line(key: str, value: str) -> str:
 
 
 def main() -> None:
-    print("姿態警報系統展示設定")
-    print("這個工具會在專案資料夾產生 demo.env，之後可用 ./run_demo.sh 啟動。")
-    print("不知道的項目可以直接按 Enter 略過，之後再重新執行本工具修改。")
+    print("Posture Alarm demo setup")
+    print("This tool creates demo.env in the project folder.")
+    print("Press Enter to keep the default or leave an optional value empty.")
     print()
 
-    use_gpio = _ask_yes_no("要啟用實體蜂鳴器與 LED 嗎", True)
-    buzzer_frequency = _ask("蜂鳴器頻率 Hz", "2000")
-    show_window = _ask_yes_no("要顯示攝影機視窗嗎", True)
-    mark_bed_roi = _ask_yes_no("啟動時要先標記床區嗎", True)
-    line_token = _ask("LINE Channel Access Token（沒有可留空）")
-    line_target = _ask("LINE User ID 或 Group ID（沒有可留空）")
-    discord_webhook = _ask("Discord Webhook URL（沒有可留空）")
-    log_path = _ask("Log 檔案位置", "/home/pi/posture_alarm/data/posture_alarm.log")
+    use_gpio = _ask_yes_no("Enable real buzzer and LED", True)
+    buzzer_frequency = _ask("Buzzer frequency in Hz", "2000")
+    show_window = _ask_yes_no("Show camera window", True)
+    mark_bed_roi = _ask_yes_no("Mark bed area on startup", True)
+    line_token = _ask("LINE Channel Access Token (optional)")
+    line_target = _ask("LINE User ID or Group ID (optional)")
+    discord_webhook = _ask("Discord Webhook URL (optional)")
+    log_path = _ask("Log file or folder path", "/home/pi/posture_alarm/data/posture_alarm.log")
 
     lines = [
         "# Demo runtime settings for posture_alarm.",
@@ -63,8 +63,8 @@ def main() -> None:
 
     DEMO_ENV_PATH.write_text("\n".join(lines), encoding="utf-8")
     print()
-    print(f"已產生：{DEMO_ENV_PATH}")
-    print("啟動展示模式：./run_demo.sh")
+    print(f"Created: {DEMO_ENV_PATH}")
+    print("Start demo mode: ./run_demo.sh")
 
 
 if __name__ == "__main__":

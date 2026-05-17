@@ -51,3 +51,26 @@ def test_setup_logger_writes_to_configured_log_file(monkeypatch, tmp_path):
             handler.close()
         importlib.reload(config)
         importlib.reload(utils)
+
+
+def test_setup_logger_accepts_log_directory(monkeypatch, tmp_path):
+    monkeypatch.setenv("LOG_FILE_ENABLED", "1")
+    monkeypatch.setenv("LOG_FILE_PATH", str(tmp_path))
+    importlib.reload(config)
+    reloaded_utils = importlib.reload(utils)
+
+    logger = reloaded_utils.setup_logger("posture_alarm_test_log_directory")
+
+    try:
+        logger.info("directory logger smoke test")
+        for handler in logger.handlers:
+            handler.flush()
+
+        log_path = tmp_path / "posture_alarm.log"
+        assert "directory logger smoke test" in log_path.read_text(encoding="utf-8")
+    finally:
+        for handler in list(logger.handlers):
+            logger.removeHandler(handler)
+            handler.close()
+        importlib.reload(config)
+        importlib.reload(utils)

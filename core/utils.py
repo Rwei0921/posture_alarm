@@ -37,6 +37,15 @@ def display_timestamp_from_iso(timestamp: str) -> str:
     return datetime.fromisoformat(timestamp).astimezone(app_timezone()).strftime("%Y年%m月%d日 %H:%M:%S")
 
 
+def _log_file_path() -> Path:
+    path = Path(config.LOG_FILE_PATH)
+    if path.exists() and path.is_dir():
+        return path / "posture_alarm.log"
+    if not path.suffix:
+        return path / "posture_alarm.log"
+    return path
+
+
 def setup_logger(name: str = "posture_alarm", level: int = logging.INFO) -> logging.Logger:
     """Create and configure a consistent console logger."""
     logger = logging.getLogger(name)
@@ -57,7 +66,7 @@ def setup_logger(name: str = "posture_alarm", level: int = logging.INFO) -> logg
         logger.addHandler(handler)
 
     if config.LOG_FILE_ENABLED:
-        log_path = Path(config.LOG_FILE_PATH)
+        log_path = _log_file_path()
         if not any(isinstance(handler, logging.FileHandler) and Path(handler.baseFilename) == log_path for handler in logger.handlers):
             log_path.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(log_path, encoding="utf-8")
