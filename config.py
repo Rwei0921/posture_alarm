@@ -69,7 +69,7 @@ SIMULATE_IMU = os.getenv("SIMULATE_IMU", "1") == "1"
 IMU_SHOCK_THRESHOLD_G = float(os.getenv("IMU_SHOCK_THRESHOLD_G", "1.8"))
 
 # Alert
-SIMULATE_GPIO = os.getenv("SIMULATE_GPIO", "1") == "1"
+SIMULATE_GPIO = os.getenv("SIMULATE_GPIO", "0") == "1"
 ALERT_ON_FALL_ONLY = os.getenv("ALERT_ON_FALL_ONLY", "1") == "1"
 ALERT_COOLDOWN_SECONDS = float(os.getenv("ALERT_COOLDOWN_SECONDS", "60"))
 

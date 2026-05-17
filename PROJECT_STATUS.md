@@ -156,7 +156,7 @@ python main.py
 - `LINE_TARGET_ID`
 - `DISCORD_WEBHOOK_URL`
 - `SIMULATE_IMU`（預設 1）
-- `SIMULATE_GPIO`（預設 1）
+- `SIMULATE_GPIO`（預設 0，使用實體 GPIO；設為 1 可改回模擬）
 
 ---
 
