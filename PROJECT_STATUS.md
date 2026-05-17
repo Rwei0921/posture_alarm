@@ -31,7 +31,8 @@ Camera
 - `main.py`：主迴圈與模組整合
 - `mark_bed_roi.py`：手動標記床區 ROI 工具
 - `requirements.txt`：已改為 MediaPipe/OpenCV/requests 等依賴
-- `structure.txt`：說明已更新為 MediaPipe 人體偵測語意
+- `README.MD`：展示、部署、測試與故障排除操作手冊
+- `TODAY_PROGRESS.md`：今日硬體、通知、展示流程與清理進度
 - `posture_alarm.service`：systemd 無頭部署範本
 - `TUNING_GUIDE.md`：閾值調參指南
 
