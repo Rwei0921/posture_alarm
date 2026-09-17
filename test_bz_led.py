@@ -9,6 +9,7 @@ import time
 
 DEFAULT_BUZZER_PIN = 17
 DEFAULT_LED_PIN = 27
+DEFAULT_LED_2_PIN = 22
 
 
 class SimulatedDevice:
@@ -55,10 +56,17 @@ class PWMBuzzerAdapter:
         self.device.close()
 
 
-def _build_devices(buzzer_pin: int, led_pin: int, simulate: bool, pwm_buzzer: bool, frequency: float):
+def _build_devices(
+    buzzer_pin: int,
+    led_pin: int,
+    led_2_pin: int,
+    simulate: bool,
+    pwm_buzzer: bool,
+    frequency: float,
+):
     if simulate:
         buzzer = SimulatedToneDevice(f"Buzzer GPIO {buzzer_pin}") if pwm_buzzer else SimulatedDevice(f"Buzzer GPIO {buzzer_pin}")
-        return buzzer, SimulatedDevice(f"LED GPIO {led_pin}")
+        return buzzer, SimulatedDevice(f"LED GPIO {led_pin}"), SimulatedDevice(f"LED_2 GPIO {led_2_pin}")
 
     try:
         gpiozero = importlib.import_module("gpiozero")
@@ -75,7 +83,7 @@ def _build_devices(buzzer_pin: int, led_pin: int, simulate: bool, pwm_buzzer: bo
             buzzer = PWMBuzzerAdapter(PWMOutputDevice(buzzer_pin, frequency=frequency), frequency)
         else:
             buzzer = Buzzer(buzzer_pin)
-        return buzzer, LED(led_pin)
+        return buzzer, LED(led_pin), LED(led_2_pin)
     except Exception as exc:
         raise RuntimeError(
             "Unable to initialize Raspberry Pi GPIO. Install a pin factory and make sure "
@@ -111,42 +119,56 @@ def _stop_device(device) -> None:
 def run_test(
     buzzer_pin: int,
     led_pin: int,
+    led_2_pin: int,
     duration: float,
     repeat: int,
     simulate: bool,
     pwm_buzzer: bool,
     frequency: float,
 ) -> None:
-    buzzer, led = _build_devices(buzzer_pin, led_pin, simulate, pwm_buzzer, frequency)
+    buzzer, led, led_2 = _build_devices(
+        buzzer_pin,
+        led_pin,
+        led_2_pin,
+        simulate,
+        pwm_buzzer,
+        frequency,
+    )
 
     print("BZ/LED test starting")
     print(f"Buzzer: BCM GPIO {buzzer_pin}")
     print(f"LED: BCM GPIO {led_pin}")
+    print(f"LED_2: BCM GPIO {led_2_pin}")
     print("Press Ctrl+C to stop early")
 
     try:
         _pulse(led, "LED", duration)
+        _pulse(led_2, "LED_2", duration)
         if pwm_buzzer:
             _tone(buzzer, frequency, duration)
         else:
             _pulse(buzzer, "Buzzer", duration)
 
         for index in range(repeat):
-            print(f"Testing both devices blink {index + 1}/{repeat}")
+            print(f"Testing all alarm devices blink {index + 1}/{repeat}")
             led.on()
+            led_2.on()
             if pwm_buzzer:
                 getattr(buzzer, "play")(frequency)
             else:
                 buzzer.on()
             time.sleep(duration)
             led.off()
+            led_2.off()
             _stop_device(buzzer)
             time.sleep(duration)
     finally:
         _stop_device(buzzer)
         led.off()
+        led_2.off()
         buzzer.close()
         led.close()
+        led_2.close()
         print("BZ/LED test finished")
 
 
@@ -154,6 +176,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Test Buzzer and LED GPIO output.")
     parser.add_argument("--buzzer-pin", type=int, default=DEFAULT_BUZZER_PIN, help="BCM GPIO pin for buzzer")
     parser.add_argument("--led-pin", type=int, default=DEFAULT_LED_PIN, help="BCM GPIO pin for LED")
+    parser.add_argument("--led-2-pin", type=int, default=DEFAULT_LED_2_PIN, help="BCM GPIO pin for LED_2")
     parser.add_argument("--duration", type=float, default=0.5, help="On/off duration in seconds")
     parser.add_argument("--repeat", type=int, default=5, help="Blink repeat count for both devices")
     parser.add_argument("--pwm-buzzer", action="store_true", help="Use PWM tone output for passive buzzers")
@@ -164,6 +187,7 @@ def main() -> None:
     run_test(
         buzzer_pin=args.buzzer_pin,
         led_pin=args.led_pin,
+        led_2_pin=args.led_2_pin,
         duration=args.duration,
         repeat=args.repeat,
         simulate=args.simulate,

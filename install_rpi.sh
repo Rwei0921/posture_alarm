@@ -27,6 +27,7 @@ $SUDO apt-get install -y \
   libswscale-dev \
   libgtk-3-dev \
   libglib2.0-0 \
+  libgpiod2 \
   libgl1 \
   v4l-utils \
   rpicam-apps \
@@ -48,7 +49,8 @@ python -m pip install --upgrade pip setuptools wheel
 echo "[4/5] Installing common Python dependencies..."
 python -m pip install \
   "requests>=2.31.0" \
-  "gpiozero>=2.0"
+  "gpiozero>=2.0" \
+  "adafruit-circuitpython-dht>=4.0.0"
 
 echo "[5/5] Installing MediaPipe..."
 python -m pip uninstall -y mediapipe mediapipe-rpi4 >/dev/null 2>&1 || true

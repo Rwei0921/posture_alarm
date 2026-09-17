@@ -22,6 +22,18 @@ RPICAM_BUFFER_MAX_BYTES = int(os.getenv("RPICAM_BUFFER_MAX_BYTES", str(4 * 1024 
 SHOW_WINDOW = os.getenv("SHOW_WINDOW", "1") == "1"
 DISPLAY_SCALE = float(os.getenv("DISPLAY_SCALE", "0.5"))
 
+# Hardware pins and DHT22 environment sensor
+BUZZER_GPIO_PIN = int(os.getenv("BUZZER_GPIO_PIN", "17"))
+LED_GPIO_PIN = int(os.getenv("LED_GPIO_PIN", "27"))
+LED_2_GPIO_PIN = int(os.getenv("LED_2_GPIO_PIN", "22"))
+LED_2_ENABLED = os.getenv("LED_2_ENABLED", "1") == "1"
+DHT22_ENABLED = os.getenv("DHT22_ENABLED", "1") == "1"
+DHT22_DATA_PIN = int(os.getenv("DHT22_DATA_PIN", "4"))
+DHT22_USE_PULSEIO = os.getenv("DHT22_USE_PULSEIO", "0") == "1"
+DHT22_READ_INTERVAL_SECONDS = float(os.getenv("DHT22_READ_INTERVAL_SECONDS", "2.0"))
+DHT22_LOG_INTERVAL_SECONDS = float(os.getenv("DHT22_LOG_INTERVAL_SECONDS", "60.0"))
+DHT22_SHOW = os.getenv("DHT22_SHOW", "1") == "1"
+
 # MediaPipe / pose
 MP_STATIC_IMAGE_MODE = False
 MP_MODEL_COMPLEXITY = int(os.getenv("MP_MODEL_COMPLEXITY", "1"))

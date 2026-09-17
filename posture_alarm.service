@@ -9,6 +9,7 @@ User=pi
 WorkingDirectory=/home/pi/posture_alarm
 Environment=PYTHONUNBUFFERED=1
 Environment=SHOW_WINDOW=0
+Environment=BED_ROI_MARK_ON_START=0
 Environment=SIMULATE_GPIO=0
 Environment=CAMERA_BACKEND=rpicam
 Environment=CAMERA_WIDTH=640

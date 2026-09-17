@@ -2,6 +2,8 @@
 
 `posture_alarm` is a Raspberry Pi posture alarm demo. It uses a camera and MediaPipe Pose to detect fall-like posture, then triggers LED, buzzer, LINE, Discord, SQLite logging, and on-screen overlay.
 
+Additional DHT22, LED_2, and 5V buzzer component wiring is documented in [`hardware_components.md`](hardware_components.md).
+
 ## Hardware Pins
 
 Use BCM GPIO numbering:
@@ -106,6 +108,12 @@ If you only want to check the script flow without GPIO hardware:
 python test_bz_led.py --simulate --pwm-buzzer
 ```
 
+Test DHT22 on Raspberry Pi:
+
+```bash
+python test_dht22.py --data-pin 4 --reads 5
+```
+
 ## Test LINE And Discord
 
 After `demo.env` is configured:
@@ -198,6 +206,11 @@ python -c "from vision.camera import Camera; from vision.person_detector import 
 | `SIMULATE_GPIO` | `0` | Set `1` to avoid real GPIO output |
 | `BUZZER_PWM_ENABLED` | `1` | Use PWM buzzer output |
 | `BUZZER_PWM_FREQUENCY` | `2000` | Buzzer PWM frequency |
+| `LED_2_ENABLED` | `1` | Enable the second alarm LED |
+| `LED_2_GPIO_PIN` | `22` | LED_2 BCM GPIO pin |
+| `DHT22_ENABLED` | `1` | Enable DHT22 reading |
+| `DHT22_DATA_PIN` | `4` | DHT22 DATA BCM GPIO pin |
+| `DHT22_READ_INTERVAL_SECONDS` | `2.0` | Minimum interval between DHT22 reads |
 | `LINE_CHANNEL_ACCESS_TOKEN` | empty | LINE Messaging API token |
 | `LINE_TARGET_ID` | empty | LINE user or group id |
 | `DISCORD_WEBHOOK_URL` | empty | Discord webhook URL |

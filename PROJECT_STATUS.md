@@ -35,6 +35,7 @@ Camera
 - `TODAY_PROGRESS.md`：今日硬體、通知、展示流程與清理進度
 - `posture_alarm.service`：systemd 無頭部署範本
 - `TUNING_GUIDE.md`：閾值調參指南
+- `hardware_components.md`：DHT22、LED、LED_2 與 5V 蜂鳴器元件清單及接線
 
 ### Vision
 - `vision/camera.py`：`Camera` 類別，支援 `rpicam` / `picamera2` / OpenCV
@@ -47,9 +48,12 @@ Camera
 - `core/utils.py`：logger、timestamp 與中文告警訊息格式工具
 
 ### Alert
-- `alert/buzzer_led.py`：`BuzzerLED`（支援模擬模式）
+- `alert/buzzer_led.py`：`BuzzerLED`（支援模擬模式），現有蜂鳴器 GPIO17、LED GPIO27，新增 LED_2 GPIO22
 - `alert/notifier_line.py`：`LineNotifier`（LINE Messaging API push）
 - `alert/notifier_discord.py`：`DiscordNotifier`（Discord webhook）
+
+### Sensors
+- `sensors/dht22.py`：DHT22 溫度／濕度讀取，採用 2 秒以上讀取間隔並在硬體失敗時 fail-soft
 
 ### Storage
 - `storage/db_sqlite.py`：`EventDB`（SQLite 事件紀錄，會自動建目錄 / 建表）
@@ -167,6 +171,9 @@ python main.py
 - `LOG_FILE_ENABLED`（預設 1）
 - `LOG_FILE_PATH`（預設 `data/posture_alarm.log`）
 - `SIMULATE_GPIO`（預設 0，使用實體 GPIO；設為 1 可改回模擬）
+- `LED_2_ENABLED`、`LED_2_GPIO_PIN`（預設 GPIO22）
+- `DHT22_ENABLED`、`DHT22_DATA_PIN`（預設 GPIO4）
+- `DHT22_READ_INTERVAL_SECONDS`、`DHT22_LOG_INTERVAL_SECONDS`、`DHT22_SHOW`
 - `BUZZER_PWM_ENABLED`（預設 1，兩腳被動蜂鳴器使用 PWM）
 - `BUZZER_PWM_FREQUENCY`（預設 2000）
 
@@ -181,6 +188,8 @@ python main.py
 - SQLite 已接到主流程，事件會自動寫入 `data/events.db`，但舊資料若是 UTC 格式不會自動轉換
 - 日誌、DB 與告警訊息已統一走 `APP_TIMEZONE`；目前通知顯示為中文時間格式
 - 硬體端 GPIO 仍需依實際樹莓派與蜂鳴器/LED 接線驗證
+- 5V 蜂鳴器必須透過 MOSFET／電晶體驅動；GPIO17 只提供控制訊號，不可接收升壓後的 5V
+- DHT22 讀值仍需在實體感測器與正確上拉電阻接線後驗證
 - 無攝影機或無 GUI 環境下，需關閉視窗顯示（`SHOW_WINDOW=0`）
 
 > 進度更新：SQLite、LINE/Discord、時間一致性與第一輪跌倒保守化調參已完成，後續重點為實地調參與資料累積。
@@ -245,6 +254,9 @@ pkill -f rpicam-vid
 | **單元測試** (`tests/`) | ✅ 已完成 | state machine / classifier / DB / notifier / config / utils 共 6 檔 |
 | **systemd 部署** (`posture_alarm.service`) | ✅ 已完成 | 無頭模式服務範本 |
 | **調參指南** (`TUNING_GUIDE.md`) | ✅ 已完成 | 含高/低角度預設值與疑難排解 |
+| **DHT22 溫濕度讀取** | ✅ 已完成 | GPIO4，畫面顯示、日誌與跌倒事件 payload 可記錄最新讀值 |
+| **LED_2 警示燈** | ✅ 已完成 | GPIO22，與主警報同步控制 |
+| **5V 蜂鳴器驅動文件** | ✅ 已完成 | 已提供升壓、共地與 MOSFET／電晶體安全接線說明 |
 | **第一輪跌倒保守化調參** | ✅ 已完成 | 已提高角度 / 速度 / hip drop 條件，先降低床上抬頭誤報 |
 | **實地調參與資料累積** | 🔶 待進行 | 需在樹莓派實際場域測試調整閾值 |
 | **`LYING_SAFE` 狀態分流** | ✅ 已完成 | 床區內無跌倒事件的躺臥姿態可分流為安全狀態 |

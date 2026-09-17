@@ -13,14 +13,23 @@ class BuzzerLED:
         enabled: bool = True,
         buzzer_pwm: bool = True,
         buzzer_frequency: float = 2000.0,
+        buzzer_pin: int = 17,
+        led_pin: int = 27,
+        led_2_pin: int = 22,
+        led_2_enabled: bool = True,
     ) -> None:
         self.simulate = simulate
         self.enabled = enabled
         self.buzzer_pwm = buzzer_pwm
         self.buzzer_frequency = buzzer_frequency
+        self.buzzer_pin = buzzer_pin
+        self.led_pin = led_pin
+        self.led_2_pin = led_2_pin
+        self.led_2_enabled = led_2_enabled
         self._active = False
         self._buzzer = None
         self._led = None
+        self._led_2 = None
 
         if not self.simulate:
             try:
@@ -29,11 +38,22 @@ class BuzzerLED:
                 PWMOutputDevice = getattr(gpiozero, "PWMOutputDevice")
                 LED = getattr(gpiozero, "LED")
                 if self.buzzer_pwm:
-                    self._buzzer = PWMOutputDevice(17, frequency=self.buzzer_frequency)
+                    self._buzzer = PWMOutputDevice(self.buzzer_pin, frequency=self.buzzer_frequency)
                 else:
-                    self._buzzer = Buzzer(17)
-                self._led = LED(27)
+                    self._buzzer = Buzzer(self.buzzer_pin)
+                self._led = LED(self.led_pin)
+                if self.led_2_enabled:
+                    self._led_2 = LED(self.led_2_pin)
             except Exception:
+                for device in (self._buzzer, self._led, self._led_2):
+                    if device is not None:
+                        try:
+                            device.close()
+                        except Exception:
+                            pass
+                self._buzzer = None
+                self._led = None
+                self._led_2 = None
                 self.simulate = True
 
     @property
@@ -53,6 +73,8 @@ class BuzzerLED:
                 self._buzzer.on()
         if self._led is not None:
             self._led.on()
+        if self._led_2 is not None:
+            self._led_2.on()
 
     def alert_off(self) -> None:
         self._active = False
@@ -65,6 +87,8 @@ class BuzzerLED:
                 self._buzzer.off()
         if self._led is not None:
             self._led.off()
+        if self._led_2 is not None:
+            self._led_2.off()
 
     def pulse(self, duration: float = 1.0, interval: float = 0.2) -> None:
         if not self.enabled:
@@ -78,3 +102,6 @@ class BuzzerLED:
 
     def close(self) -> None:
         self.alert_off()
+        for device in (self._buzzer, self._led, self._led_2):
+            if device is not None:
+                device.close()

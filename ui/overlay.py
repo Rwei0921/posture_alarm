@@ -33,6 +33,30 @@ class Overlay:
         )
         return frame
 
+    def draw_environment(
+        self,
+        frame: Any,
+        temperature_c: float | None,
+        humidity_pct: float | None,
+    ) -> Any:
+        """Draw the latest DHT22 sample without blocking the frame loop."""
+        cv2 = self._load_cv2()
+        if temperature_c is None or humidity_pct is None:
+            text = "DHT22: unavailable"
+        else:
+            text = f"Temp: {temperature_c:.1f}C  Humidity: {humidity_pct:.1f}%"
+        cv2.putText(
+            frame,
+            text,
+            (20, 68),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            self.font_scale * 0.8,
+            (255, 255, 255),
+            max(1, self.thickness - 1),
+            cv2.LINE_AA,
+        )
+        return frame
+
     def draw_alert(self, frame: Any, message: str) -> Any:
         cv2 = self._load_cv2()
         h, w = frame.shape[:2]

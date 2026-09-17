@@ -16,6 +16,7 @@ from core.state_machine import PostureState, PostureStateMachine
 from core.utils import build_fall_alert_message, display_timestamp_from_iso, now_timestamp, setup_logger
 from storage.db_sqlite import EventDB
 from storage.reporter import Reporter
+from sensors.dht22 import DHT22Reading, DHT22Sensor
 from ui.overlay import Overlay
 from vision.camera import Camera
 from vision.fall_classifier import FallClassifier
@@ -285,7 +286,16 @@ def run() -> None:
         simulate=config.SIMULATE_GPIO,
         buzzer_pwm=config.BUZZER_PWM_ENABLED,
         buzzer_frequency=config.BUZZER_PWM_FREQUENCY,
+        buzzer_pin=config.BUZZER_GPIO_PIN,
+        led_pin=config.LED_GPIO_PIN,
+        led_2_pin=config.LED_2_GPIO_PIN,
+        led_2_enabled=config.LED_2_ENABLED,
     )
+    dht22 = DHT22Sensor(
+        data_pin=config.DHT22_DATA_PIN,
+        simulate=config.SIMULATE_GPIO,
+        use_pulseio=config.DHT22_USE_PULSEIO,
+    ) if config.DHT22_ENABLED else None
     line = LineNotifier(
         channel_access_token=config.LINE_CHANNEL_ACCESS_TOKEN,
         to=config.LINE_TARGET_ID,
@@ -316,6 +326,10 @@ def run() -> None:
     previous_state = state_machine.state
     read_failures = 0
     last_alert_ts = 0.0
+    last_dht_read_ts = 0.0
+    last_dht_log_ts = 0.0
+    last_dht_error_log_ts = 0.0
+    last_dht_reading: DHT22Reading | None = None
     logger.info("posture_alarm started")
     if config.LOG_FILE_ENABLED:
         logger.info("file logging enabled: %s", config.LOG_FILE_PATH)
@@ -329,11 +343,23 @@ def run() -> None:
         config.CAMERA_HEIGHT,
     )
     logger.info(
-        "gpio simulate=%s buzzer_pwm=%s buzzer_frequency=%.0fHz",
+        "gpio simulate=%s buzzer_pin=%s led_pin=%s led_2_pin=%s led_2_enabled=%s buzzer_pwm=%s buzzer_frequency=%.0fHz",
         config.SIMULATE_GPIO,
+        config.BUZZER_GPIO_PIN,
+        config.LED_GPIO_PIN,
+        config.LED_2_GPIO_PIN,
+        config.LED_2_ENABLED,
         config.BUZZER_PWM_ENABLED,
         config.BUZZER_PWM_FREQUENCY,
     )
+    if dht22 is None:
+        logger.info("DHT22 disabled")
+    elif dht22.available:
+        logger.info("DHT22 enabled: data_pin=%s", config.DHT22_DATA_PIN)
+    elif config.SIMULATE_GPIO:
+        logger.info("DHT22 simulation mode: no physical sensor read")
+    else:
+        logger.warning("DHT22 unavailable: %s", dht22.last_error or "unknown initialization error")
     line_configured = bool(config.LINE_CHANNEL_ACCESS_TOKEN and config.LINE_TARGET_ID)
     discord_configured = bool(config.DISCORD_WEBHOOK_URL)
     if line_configured:
@@ -378,9 +404,35 @@ def run() -> None:
                 continue
             read_failures = 0
 
+            monotonic_now = time.monotonic()
+            if (
+                dht22 is not None
+                and dht22.available
+                and monotonic_now - last_dht_read_ts >= config.DHT22_READ_INTERVAL_SECONDS
+            ):
+                last_dht_read_ts = monotonic_now
+                reading = dht22.read()
+                if reading is not None:
+                    last_dht_reading = reading
+                    if monotonic_now - last_dht_log_ts >= config.DHT22_LOG_INTERVAL_SECONDS:
+                        logger.info(
+                            "DHT22 temperature=%.1fC humidity=%.1f%%",
+                            reading.temperature_c,
+                            reading.humidity_pct,
+                        )
+                        last_dht_log_ts = monotonic_now
+                elif monotonic_now - last_dht_error_log_ts >= config.DHT22_LOG_INTERVAL_SECONDS:
+                    logger.warning("DHT22 read failed: %s", dht22.last_error or "unknown read error")
+                    last_dht_error_log_ts = monotonic_now
+
             landmarks = pose_estimator.extract_landmarks(frame)
             person_present = person_detector.has_person(landmarks) if landmarks else False
             fall_payload: dict[str, Any] = {"person_present": person_present}
+            if last_dht_reading is not None:
+                fall_payload.update({
+                    "temperature_c": round(last_dht_reading.temperature_c, 2),
+                    "humidity_pct": round(last_dht_reading.humidity_pct, 2),
+                })
 
             fall_detected = False
             hip_speed = 0.0
@@ -432,6 +484,12 @@ def run() -> None:
                 buzzer.alert_off()
 
             frame = overlay.draw_status(frame, state.value, warning=state == PostureState.FALLEN)
+            if config.DHT22_ENABLED and config.DHT22_SHOW:
+                frame = overlay.draw_environment(
+                    frame,
+                    last_dht_reading.temperature_c if last_dht_reading else None,
+                    last_dht_reading.humidity_pct if last_dht_reading else None,
+                )
             if landmarks:
                 frame = overlay.draw_landmarks(frame, landmarks)
             if config.BED_ROI_ENABLED and config.BED_ROI_SHOW:
@@ -483,6 +541,8 @@ def run() -> None:
         pose_estimator.close()
         person_detector.close()
         buzzer.close()
+        if dht22 is not None:
+            dht22.close()
         db.close()
         if cv2 is not None:
             cv2.destroyAllWindows()
