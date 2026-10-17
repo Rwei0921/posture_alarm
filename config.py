@@ -25,6 +25,8 @@ DISPLAY_SCALE = float(os.getenv("DISPLAY_SCALE", "0.5"))
 # 控制面板預設關閉，保留原本 CLI 啟動方式。
 GUI_ENABLED = os.getenv("GUI_ENABLED", "0") == "1"
 GUI_REFRESH_MS = max(100, min(5000, int(os.getenv("GUI_REFRESH_MS", "500"))))
+GUI_ROI_ON_START = os.getenv("GUI_ROI_ON_START", "1") == "1"
+GUI_PREVIEW_FPS = max(1, min(10, int(os.getenv("GUI_PREVIEW_FPS", "5"))))
 
 # PCB hardware pins and environment sensors
 BUZZER_GPIO_PIN = int(os.getenv("BUZZER_GPIO_PIN", "17"))

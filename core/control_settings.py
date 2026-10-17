@@ -11,6 +11,8 @@ import tempfile
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+from core.roi import ROI_KEYS
+
 
 NOTIFICATION_KEYS = ("LINE_CHANNEL_ACCESS_TOKEN", "LINE_TARGET_ID", "DISCORD_WEBHOOK_URL")
 SECRET_MASK = "*"
@@ -43,7 +45,7 @@ BALANCED_PRESET = {spec.key: str(spec.default) for spec in THRESHOLDS}
 SENSITIVE_PRESET = dict(zip((spec.key for spec in THRESHOLDS), (
     "48.0", "0.16", "0.20", "5", "0.55", "0.09", "1.8", "1.0", "3.0", "5.0",
 )))
-EDITABLE_KEYS = set(BALANCED_PRESET) | set(NOTIFICATION_KEYS) | {"GUI_ENABLED", "GUI_REFRESH_MS"}
+EDITABLE_KEYS = set(BALANCED_PRESET) | set(NOTIFICATION_KEYS) | ROI_KEYS | {"GUI_ENABLED", "GUI_REFRESH_MS"}
 _ASSIGNMENT = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$")
 
 
@@ -107,7 +109,7 @@ def validate_notifications(values: dict[str, str]) -> dict[str, str]:
 def update_env(path: Path, updates: dict[str, str], expected: dict[str, str] | None = None) -> None:
     """保留其他設定，安全引用特殊字元，並在同目錄原子替換。"""
     if not set(updates) <= EDITABLE_KEYS:
-        raise ValueError("控制面板只能儲存通知與閾值設定")
+        raise ValueError("控制面板只能儲存通知、閾值與 ROI 設定")
     if any(any(char in value for char in "\r\n\x00") for value in updates.values()):
         raise ValueError("設定值不能包含換行或控制字元")
     text = path.read_text(encoding="utf-8-sig") if path.exists() else ""

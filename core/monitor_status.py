@@ -6,6 +6,8 @@ from typing import Any
 
 
 def explain_status(snapshot: dict[str, Any]) -> str:
+    if snapshot.get("phase") == "camera_preview":
+        return "目前僅預覽相機、設定床區 ROI；確認並開始後才會執行姿態監控與警報。"
     if snapshot.get("phase") == "starting":
         return "正在初始化相機與姿態模型"
     if snapshot.get("phase") == "stopped":

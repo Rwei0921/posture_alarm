@@ -25,6 +25,7 @@ class MonitorProcess:
         self.root = root
         self.env_path = env_path
         self.messages: Queue[dict[str, Any]] = Queue(maxsize=128)
+        self.frames: Queue[dict[str, Any]] = Queue(maxsize=1)
         self.process: subprocess.Popen[str] | None = None
         self.stopping = False
         self.stop_started = 0.0
@@ -38,12 +39,14 @@ class MonitorProcess:
     def start(self, mode: str = "monitor") -> None:
         if self.busy:
             raise RuntimeError("監控或硬體測試尚未停止")
-        if mode not in {"monitor", "alarm_test"}:
+        if mode not in {"monitor", "alarm_test", "camera"}:
             raise ValueError("未知的執行模式")
         self.drain()
+        self.take_frame()
         environment = dict(os.environ)
         environment.update(read_env(self.env_path))
-        environment.update(GUI_ENABLED="0", PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
+        environment.update(GUI_ENABLED="0", SHOW_WINDOW="0", BED_ROI_MARK_ON_START="0",
+                           PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
         # 密鑰只透過子程序環境傳入，不放在命令列或 GUI 訊息內。
         self.mode = mode
         self.process = subprocess.Popen(
@@ -58,6 +61,17 @@ class MonitorProcess:
         self._reader.start()
 
     def _post(self, message: dict[str, Any]) -> None:
+        if message.get("type") == "frame":
+            # 丟棄過時影像，不讓較慢的 Tk 畫面累積數秒延遲或無限佔用記憶體。
+            try:
+                self.frames.get_nowait()
+            except Empty:
+                pass
+            try:
+                self.frames.put_nowait(message)
+            except Full:
+                pass
+            return
         try:
             self.messages.put_nowait(message)
         except Full:
@@ -84,6 +98,22 @@ class MonitorProcess:
         code = process.wait()
         process.stdout.close()
         self._post({"type": "exit", "code": code})
+
+    def take_frame(self) -> dict[str, Any] | None:
+        try:
+            return self.frames.get_nowait()
+        except Empty:
+            return None
+
+    def send_command(self, command: dict[str, Any]) -> bool:
+        if not self.process or self.stopping or not self.process.stdin:
+            return False
+        try:
+            self.process.stdin.write(json.dumps(command, ensure_ascii=True) + "\n")
+            self.process.stdin.flush()
+            return True
+        except (BrokenPipeError, OSError):
+            return False
 
     def stop(self) -> None:
         if not self.process or self.stopping:

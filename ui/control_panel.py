@@ -15,6 +15,8 @@ from core.control_settings import (
     read_env, update_env, validate_notifications, validate_thresholds,
 )
 from core.monitor_status import explain_status
+from core.roi import roi_from_settings, roi_to_env
+from ui.camera_roi import CameraROI
 
 
 class ControlPanel:
@@ -29,6 +31,9 @@ class ControlPanel:
         self.notification_busy = False
         self.closing = False
         self.restart_pending = False
+        self.roi_start_pending = False
+        self.monitor_after_roi = False
+        self.preview_visible = False
         self.last_received = 0.0
         self.last_state = ""
         self.last_notify = None
@@ -71,6 +76,11 @@ class ControlPanel:
         threshold_tab = ttk.Frame(self.notebook)
         self.notebook.add(threshold_tab, text="跌倒閾值")
         self._build_thresholds(threshold_tab)
+        camera_form = self._scrollable_tab("鏡頭／ROI", stretch=True)
+        self.camera_tab = camera_form.master.master
+        self.camera_view = CameraROI(camera_form, self._open_camera, self._confirm_roi,
+                                     self._hide_camera, self._preview_request)
+        self.notebook.bind("<<NotebookTabChanged>>", self._tab_changed)
         footer = ttk.Frame(outer)
         # 先保留底部按鈕空間，避免 Notebook 內容較高時把儲存按鈕擠出視窗。
         footer.pack(side="bottom", before=self.notebook, fill="x", pady=(8, 0))
@@ -124,7 +134,7 @@ class ControlPanel:
         style.configure("Treeview.Heading", background="#253751", foreground=self.colors["text"])
         style.map("Treeview", background=[("selected", "#385572")])
 
-    def _scrollable_tab(self, title: str) -> Any:
+    def _scrollable_tab(self, title: str, stretch: bool = False) -> Any:
         container = self.ttk.Frame(self.notebook)
         self.notebook.add(container, text=title)
         canvas = self.tk.Canvas(container, bg=self.colors["bg"], highlightthickness=0)
@@ -135,7 +145,12 @@ class ControlPanel:
         form = self.ttk.Frame(canvas, padding=12)
         window = canvas.create_window((0, 0), window=form, anchor="nw")
         form.bind("<Configure>", lambda _: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.bind("<Configure>", lambda event: canvas.itemconfigure(window, width=event.width))
+        def fit(event: Any) -> None:
+            options = {"width": event.width}
+            if stretch:
+                options["height"] = max(event.height, form.winfo_reqheight())
+            canvas.itemconfigure(window, **options)
+        canvas.bind("<Configure>", fit)
         self.scrollables.append((canvas, form))
         return form
 
@@ -263,6 +278,7 @@ class ControlPanel:
         for key, value in values.items():
             self.fields[key].set(value)
         self.saved_form = self._form()
+        self.camera_view.load_points(roi_from_settings(self.disk_values, self.defaults))
 
     def _form(self) -> dict[str, str]:
         return {key: field.get() for key, field in self.fields.items()}
@@ -314,16 +330,34 @@ class ControlPanel:
             return
         if self._form() != self.saved_form and not self.dialog.askyesno("尚未儲存", "欄位修改尚未儲存。仍要使用已儲存設定開始監控嗎？", parent=self.root):
             return
+        if self.controller.busy and (self.controller.mode != "camera" or self.controller.stopping):
+            return
+        if self.defaults.GUI_ROI_ON_START:
+            self.roi_start_pending = True
+            self.notebook.select(self.camera_tab)
+            self._open_camera()
+            self.camera_view.status.set("啟動前請確認床區：可沿用已存 ROI，或重新標記四角，再按「確認 ROI 並開始監控」。")
+            return
+        if self.controller.busy:
+            self.monitor_after_roi = True
+            self.controller.stop()
+            return
+        self._launch_monitor()
+
+    def _launch_monitor(self) -> None:
         try:
             self.controller.start()
             self.last_state, self.last_notify = "", None
             self._apply_snapshot({"phase": "starting"})
             self._record("正在啟動監控")
+            self._preview_request()
         except (RuntimeError, ValueError, OSError):
             self.dialog.showerror("無法啟動", "請確認設定檔格式、執行環境，以及監控是否已停止。", parent=self.root)
 
     def _stop(self) -> None:
         self.restart_pending = False
+        self.roi_start_pending = self.monitor_after_roi = False
+        self.camera_view.clear("正在停止鏡頭／監控，等待資源釋放。")
         if self.preview:
             self._apply_snapshot({"phase": "stopped"})
             return
@@ -336,12 +370,91 @@ class ControlPanel:
             return
         if not self._save():
             return
+        self.roi_start_pending = self.monitor_after_roi = False
         if self.controller.busy:
             self.restart_pending = True
             self.controller.stop()
             self.feedback.set("設定已儲存；停止完成後會重新啟動監控。")
         else:
             self._start()
+
+    def _tab_changed(self, _event: Any = None) -> None:
+        if self.closing:
+            return
+        if self.notebook.select() == str(self.camera_tab):
+            self._open_camera()
+        else:
+            self.preview_visible = False
+            self._preview_request()
+            self.camera_view.clear()
+            # 單純 ROI 預覽可釋放鏡頭；真正監控則只停止傳送預覽影像。
+            if self.controller.busy and self.controller.mode == "camera" and not self.monitor_after_roi:
+                self.roi_start_pending = False
+                self.controller.stop()
+
+    def _open_camera(self) -> None:
+        if self.closing:
+            return
+        self.preview_visible = True
+        self.notebook.select(self.camera_tab)
+        if self.preview:
+            self.camera_view.status.set("介面預覽模式不會開啟實體相機。")
+            return
+        if self.controller.stopping or (self.controller.busy and self.controller.mode == "alarm_test"):
+            self.camera_view.status.set("請等待目前監控／測試停止完成，再開啟鏡頭。")
+            return
+        try:
+            if not self.controller.busy:
+                self.camera_view.load_points(roi_from_settings(read_env(self.env_path), self.defaults))
+                self.controller.start("camera")
+                self._apply_snapshot({"phase": "camera_preview", "camera_ok": False})
+                self.camera_view.status.set("正在開啟鏡頭；目前僅預覽，尚未開始監控。")
+            self._preview_request()
+        except (ValueError, OSError, RuntimeError):
+            self.camera_view.clear("鏡頭無法啟動，請檢查設定或是否被其他程式使用。")
+
+    def _preview_request(self) -> None:
+        if self.preview or self.closing:
+            return
+        canvas = self.camera_view.canvas
+        self.controller.send_command({"command": "preview", "enabled": self.preview_visible,
+                                      "width": canvas.winfo_width(), "height": canvas.winfo_height()})
+
+    def _hide_camera(self) -> None:
+        self.notebook.select(0)
+        self.preview_visible = False
+        self._preview_request()
+        self.camera_view.clear("鏡頭畫面已隱藏；若監控已啟動，仍會繼續辨識。")
+
+    def _confirm_roi(self, start: bool) -> None:
+        if self.preview or self.closing:
+            self.camera_view.status.set("介面預覽不會儲存 ROI 或啟動監控。")
+            return
+        if not self.controller.busy or self.controller.stopping or self.controller.mode not in {"camera", "monitor"}:
+            self.camera_view.status.set("請先開啟鏡頭，等待即時影像後再確認 ROI。")
+            return
+        try:
+            points = self.camera_view.selection()
+            update_env(self.env_path, roi_to_env(points), expected=self.disk_values)
+            self.disk_values = read_env(self.env_path)
+        except ValueError as exc:
+            self.dialog.showerror("ROI 未儲存", str(exc), parent=self.root)
+            return
+        except OSError:
+            self.dialog.showerror("ROI 未儲存", "無法寫入 demo.env，請檢查檔案權限。", parent=self.root)
+            return
+        self.camera_view.editing = False
+        self.camera_view.draft = []
+        self.camera_view.load_points(points)
+        self._record("床區 ROI 已儲存")
+        if start and self.controller.mode == "camera":
+            self.roi_start_pending = False
+            self.monitor_after_roi = True
+            self.controller.stop()
+            self.camera_view.clear("ROI 已儲存，等待預覽釋放鏡頭後開始監控…")
+        else:
+            sent = self.controller.send_command({"command": "roi", "points": points})
+            self.camera_view.status.set("ROI 已儲存，等待下一幀套用…" if sent else "ROI 已儲存，但尚未套用；請重新啟動監控。")
 
     def _test_alarm(self) -> None:
         if self.controller.busy:
@@ -394,7 +507,8 @@ class ControlPanel:
         phase = data.get("phase", "stopped")
         state = data.get("state", "")
         active = phase in {"running", "alarm_test"}
-        title = {"starting": "正在啟動監控…", "stopped": "監控已停止", "alarm_test": "正在測試警報", "error": "啟動或監控失敗"}.get(phase, f"監控中 · {state}")
+        title = {"starting": "正在啟動監控…", "stopped": "監控已停止", "camera_preview": "鏡頭／ROI 預覽 · 尚未開始監控",
+                 "alarm_test": "正在測試警報", "error": "啟動或監控失敗"}.get(phase, f"監控中 · {state}")
         if self.preview:
             title = "介面預覽 · 未連接硬體"
         self.banner.configure(text=title, foreground=self.colors["red"] if state == "FALLEN" or phase == "error" else self.colors["text"])
@@ -415,6 +529,8 @@ class ControlPanel:
             if data.get("sensor_error"):
                 sensor += "／讀取錯誤"
             self.health.set(f"相機：{'影像接收中' if data.get('camera_ok') else '等待影像'}　｜　GPIO：{gpio}\n感測器後端：{data.get('sensor_backend', '—')} · {sensor}")
+        elif phase == "camera_preview":
+            self.health.set(f"相機：{'預覽接收中' if data.get('camera_ok') else '等待影像'}　｜　GPIO／感測器：尚未啟動")
         else:
             self.health.set("相機：未啟動　｜　GPIO：未啟動　｜　感測器：未啟動")
         on_off = lambda key: "開" if active and data.get(key) else "關"
@@ -445,19 +561,36 @@ class ControlPanel:
             if message.get("type") == "status":
                 self._apply_snapshot(message["data"])
             elif message.get("type") == "error":
+                self.monitor_after_roi = False
+                self.camera_view.clear("鏡頭／監控發生錯誤，請檢查相機連線與設定。")
                 self._apply_snapshot({"phase": "error"})
                 self.feedback.set(f"監控失敗（{message.get('error_type', 'Error')}）。請檢查相機、模型路徑或執行 CLI 查看錯誤。")
                 self._record("監控出現錯誤，請檢查相機與模型")
             elif message.get("type") == "exit":
+                self.camera_view.clear("鏡頭／監控已停止；可再次開啟預覽。")
                 if message.get("code") == 0:
                     self._apply_snapshot({"phase": "stopped"})
                     self._record("監控／測試已停止，硬體資源已釋放")
                 else:
                     self._apply_snapshot({"phase": "error"})
-                if self.restart_pending and not self.closing:
+                if self.monitor_after_roi and message.get("code") == 0 and not self.closing:
+                    self.monitor_after_roi = False
+                    self._launch_monitor()
+                elif self.restart_pending and not self.closing:
                     self.restart_pending = False
                     self.last_state, self.last_notify = "", None
                     self._start()
+            elif message.get("type") == "roi_applied":
+                if [tuple(point) for point in message.get("points", [])] == self.camera_view.points:
+                    self.camera_view.status.set("ROI 已儲存並套用。可隱藏畫面；監控中仍會持續辨識。" if self.controller.mode == "monitor"
+                                                else "ROI 已儲存。請按「確認 ROI 並開始監控」開始辨識。")
+            elif message.get("type") in {"preview_error", "command_error"}:
+                self.camera_view.status.set("預覽或 ROI 套用失敗；原有監控不受預覽影響，請重試或重啟。")
+        frame = self.controller.take_frame()
+        if frame is not None and self.preview_visible and self.controller.busy and not self.controller.stopping:
+            self.camera_view.receive(frame)
+        if self.camera_view.photo is not None and not self.camera_view.fresh:
+            self.camera_view.status.set("影像超過 3 秒未更新，已停用標記／確認；請等待恢復或重試鏡頭。")
         try:
             while True:
                 label, success = self.results.get_nowait()
@@ -468,8 +601,8 @@ class ControlPanel:
         except Empty:
             pass
         busy = self.controller.busy
-        for button in (self.start_button, self.alarm_button):
-            button.state(["disabled"] if busy or self.closing else ["!disabled"])
+        self.start_button.state(["disabled"] if self.closing or (busy and (self.controller.mode != "camera" or self.controller.stopping)) else ["!disabled"])
+        self.alarm_button.state(["disabled"] if busy or self.closing else ["!disabled"])
         self.stop_button.state(["!disabled"] if busy and not self.controller.stopping else ["disabled"])
         for button in self.test_buttons:
             button.state(["disabled"] if self.preview or self.notification_busy or self.closing else ["!disabled"])
@@ -482,14 +615,15 @@ class ControlPanel:
         if self.closing and not busy:
             self.root.destroy()
             return
-        self.root.after(self.defaults.GUI_REFRESH_MS, self._refresh)
+        self.root.after(min(100, self.defaults.GUI_REFRESH_MS), self._refresh)
 
     def _close(self) -> None:
         if self.closing:
             return
-        dirty = self._form() != self.saved_form and not self.preview
+        dirty = (self._form() != self.saved_form or self.camera_view.editing) and not self.preview
         if (self.controller.busy or dirty) and not self.dialog.askyesno("關閉控制面板", "關閉會停止監控；尚未儲存的設定將捨棄。確定關閉？", parent=self.root):
             return
         self.closing = True
         self.restart_pending = False
+        self.roi_start_pending = self.monitor_after_roi = False
         self.controller.stop()

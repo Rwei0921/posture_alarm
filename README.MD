@@ -4,7 +4,7 @@
 
 Additional DHT22, LED_2, and 5V buzzer component wiring is documented in [`hardware_components.md`](hardware_components.md).
 
-The optional Tkinter control panel supports monitoring, LINE/Discord settings, and fall-threshold tuning. See [`gui_guide.md`](gui_guide.md) for startup and operation. Run `python run_gui.py --preview` to inspect the interface without hardware or notifications.
+The optional Tkinter control panel supports monitoring, LINE/Discord settings, fall-threshold tuning, and an embedded camera/bed-ROI tab. Starting monitoring first asks you to confirm or redraw the four-corner bed ROI; hiding the camera tab does not stop active monitoring. See [`gui_guide.md`](gui_guide.md) for startup and operation. Run `python run_gui.py --preview` to inspect the interface without hardware or notifications.
 
 ## Hardware Pins
 
@@ -207,7 +207,9 @@ python -c "from vision.camera import Camera; from vision.person_detector import 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `CAMERA_BACKEND` | `rpicam` | Camera backend |
-| `SHOW_WINDOW` | `1` | Show OpenCV window |
+| `SHOW_WINDOW` | `1` | Show OpenCV window in standalone CLI; GUI uses its embedded preview |
+| `GUI_ROI_ON_START` | `1` | Confirm bed ROI before starting monitoring from the GUI |
+| `GUI_PREVIEW_FPS` | `5` | Embedded-preview frame-rate limit (1–10), not the detection frame rate |
 | `SIMULATE_GPIO` | `0` | Set `1` to avoid real GPIO output |
 | `BUZZER_PWM_ENABLED` | `1` | Use PWM buzzer output |
 | `BUZZER_PWM_FREQUENCY` | `2000` | Buzzer PWM frequency |

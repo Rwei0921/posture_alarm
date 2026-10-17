@@ -148,7 +148,7 @@ def test_real_child_can_stop_cleanly_without_gpio_or_camera(tmp_path):
 def test_worker_error_reports_type_without_secret_text():
     import control_worker
     stream = io.StringIO()
-    with patch("main.run", side_effect=RuntimeError("dummy-secret")), patch("sys.stdin", io.StringIO("stop\n")), patch("sys.stdout", stream):
+    with patch("main.run", side_effect=RuntimeError("dummy-secret")), patch("vision.camera.Camera._load_cv2"), patch("sys.stdin", io.StringIO("stop\n")), patch("sys.stdout", stream):
         assert control_worker.worker("monitor") == 1
     assert "dummy-secret" not in stream.getvalue()
     assert "RuntimeError" in stream.getvalue()

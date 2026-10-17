@@ -252,6 +252,8 @@ def _interactive_mark_bed_roi(
 def run(
     status_callback: Callable[[dict[str, Any]], None] | None = None,
     stop_event: Event | None = None,
+    frame_callback: Callable[[Any], None] | None = None,
+    control_callback: Callable[[], None] | None = None,
 ) -> None:
     logger = setup_logger()
     stop_requested = False
@@ -442,6 +444,8 @@ def run(
             cv2.resizeWindow("posture_alarm", max(window_w, 320), max(window_h, 240))
 
         while not should_stop():
+            if control_callback is not None:
+                control_callback()
             ok, frame = cam.read_frame()
             if not ok:
                 read_failures += 1
@@ -581,6 +585,9 @@ def run(
                 )
             if landmarks:
                 frame = overlay.draw_landmarks(frame, landmarks)
+            # 嵌入式預覽共用這一幀；ROI 由 Tk Canvas 繪製，避免重複畫線。
+            if frame_callback is not None:
+                frame_callback(frame)
             if config.BED_ROI_ENABLED and config.BED_ROI_SHOW:
                 if config.BED_POLYGON_ENABLED:
                     frame = overlay.draw_bed_polygon(frame, _bed_polygon_points())
