@@ -22,9 +22,9 @@ RPICAM_BUFFER_MAX_BYTES = int(os.getenv("RPICAM_BUFFER_MAX_BYTES", str(4 * 1024 
 SHOW_WINDOW = os.getenv("SHOW_WINDOW", "1") == "1"
 DISPLAY_SCALE = float(os.getenv("DISPLAY_SCALE", "0.5"))
 
-# Hardware pins and DHT22 environment sensor
+# PCB hardware pins and environment sensors
 BUZZER_GPIO_PIN = int(os.getenv("BUZZER_GPIO_PIN", "17"))
-LED_GPIO_PIN = int(os.getenv("LED_GPIO_PIN", "27"))
+LED_GPIO_PIN = int(os.getenv("LED_GPIO_PIN", "18"))
 LED_2_GPIO_PIN = int(os.getenv("LED_2_GPIO_PIN", "22"))
 LED_2_ENABLED = os.getenv("LED_2_ENABLED", "1") == "1"
 DHT22_ENABLED = os.getenv("DHT22_ENABLED", "1") == "1"
@@ -34,7 +34,18 @@ DHT22_READ_INTERVAL_SECONDS = float(os.getenv("DHT22_READ_INTERVAL_SECONDS", "2.
 DHT22_LOG_INTERVAL_SECONDS = float(os.getenv("DHT22_LOG_INTERVAL_SECONDS", "60.0"))
 DHT22_SHOW = os.getenv("DHT22_SHOW", "1") == "1"
 
+# SHT31 is the PCB default; select dht22 for the legacy sensor only.
+ENV_SENSOR_BACKEND = os.getenv("ENV_SENSOR_BACKEND", "sht31").lower()
+SHT31_I2C_BUS = int(os.getenv("SHT31_I2C_BUS", "1"))
+SHT31_I2C_ADDRESS = int(os.getenv("SHT31_I2C_ADDRESS", "0x44"), 0)
+DHT22_FALLBACK_ENABLED = os.getenv("DHT22_FALLBACK_ENABLED", "0") == "1"
+ENV_READ_INTERVAL_SECONDS = float(os.getenv("ENV_READ_INTERVAL_SECONDS", str(DHT22_READ_INTERVAL_SECONDS)))
+ENV_LOG_INTERVAL_SECONDS = float(os.getenv("ENV_LOG_INTERVAL_SECONDS", str(DHT22_LOG_INTERVAL_SECONDS)))
+ENV_SHOW = os.getenv("ENV_SHOW", "1" if DHT22_SHOW else "0") == "1"
+
 # MediaPipe / pose
+# Tasks 姿態模型路徑，可透過環境變數指定其他 .task 檔案。
+POSE_MODEL_PATH = os.getenv("POSE_MODEL_PATH", "models/pose_landmarker_lite.task")
 MP_STATIC_IMAGE_MODE = False
 MP_MODEL_COMPLEXITY = int(os.getenv("MP_MODEL_COMPLEXITY", "1"))
 MP_MIN_DETECTION_CONFIDENCE = float(os.getenv("MP_MIN_DETECTION_CONFIDENCE", "0.5"))
@@ -73,6 +84,8 @@ BED_POLY_P4_Y = float(os.getenv("BED_POLY_P4_Y", "0.95"))
 # State machine timing (seconds)
 SUSPECT_FALL_TIMEOUT = float(os.getenv("SUSPECT_FALL_TIMEOUT", "2.0"))
 FALL_CONFIRM_SECONDS = float(os.getenv("FALL_CONFIRM_SECONDS", "1.2"))
+# Keep the event gate open through confirmation (see TUNING_GUIDE.md).
+FALL_EVENT_WINDOW_SECONDS = max(FALL_EVENT_WINDOW_SECONDS, FALL_CONFIRM_SECONDS)
 SEDENTARY_SECONDS = float(os.getenv("SEDENTARY_SECONDS", "1800"))
 FALL_RECOVERY_SECONDS = float(os.getenv("FALL_RECOVERY_SECONDS", "5.0"))
 

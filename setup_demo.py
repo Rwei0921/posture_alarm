@@ -49,7 +49,7 @@ def main() -> None:
         _env_line("BUZZER_PWM_ENABLED", "1"),
         _env_line("BUZZER_PWM_FREQUENCY", buzzer_frequency),
         _env_line("BUZZER_GPIO_PIN", "17"),
-        _env_line("LED_GPIO_PIN", "27"),
+        _env_line("LED_GPIO_PIN", "18"),
         _env_line("LED_2_ENABLED", "1"),
         _env_line("LED_2_GPIO_PIN", "22"),
         _env_line("DHT22_ENABLED", "1"),

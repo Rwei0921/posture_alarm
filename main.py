@@ -6,7 +6,7 @@ import importlib
 import os
 import signal
 import time
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 import config
 from alert.buzzer_led import BuzzerLED
@@ -17,6 +17,8 @@ from core.utils import build_fall_alert_message, display_timestamp_from_iso, now
 from storage.db_sqlite import EventDB
 from storage.reporter import Reporter
 from sensors.dht22 import DHT22Reading, DHT22Sensor
+from sensors.environment import EnvironmentSensor
+from sensors.sht31 import SHT31Sensor
 from ui.overlay import Overlay
 from vision.camera import Camera
 from vision.fall_classifier import FallClassifier
@@ -114,7 +116,10 @@ def _send_fall_alert(
     return message_sent
 
 
-def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
+def _interactive_mark_bed_roi(
+    cam: Camera, cv2, scale: float, logger,
+    should_stop: Callable[[], bool] = lambda: False,
+) -> bool:
     scale = scale if scale > 0 else 1.0
     window = "Mark BED ROI"
     window_initialized = False
@@ -136,11 +141,21 @@ def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
         ny = max(0.0, min(1.0, (y / scale) / fh))
         points.append((nx, ny))
 
-    while True:
+    read_failures = 0
+    while not should_stop():
         ok, frame = cam.read_frame()
+        if should_stop():
+            break
         if not ok:
+            read_failures += 1
+            if read_failures >= config.CAMERA_MAX_READ_FAILURES:
+                logger.warning("camera frame unavailable, aborting BED ROI marker")
+                if window_initialized:
+                    cv2.destroyWindow(window)
+                return False
             time.sleep(0.05)
             continue
+        read_failures = 0
 
         if not window_initialized:
             h, w = frame.shape[:2]
@@ -228,7 +243,9 @@ def _interactive_mark_bed_roi(cam: Camera, cv2, scale: float, logger) -> None:
             )
             break
 
-    cv2.destroyWindow(window)
+    if window_initialized:
+        cv2.destroyWindow(window)
+    return not should_stop()
 
 
 def run() -> None:
@@ -259,12 +276,14 @@ def run() -> None:
         min_visible_keypoints=config.MIN_VISIBLE_KEYPOINTS,
         min_detection_confidence=config.MP_MIN_DETECTION_CONFIDENCE,
         min_tracking_confidence=config.MP_MIN_TRACKING_CONFIDENCE,
+        model_path=config.POSE_MODEL_PATH,
     )
     pose_estimator = PoseEstimator(
         static_image_mode=config.MP_STATIC_IMAGE_MODE,
         model_complexity=config.MP_MODEL_COMPLEXITY,
         min_detection_confidence=config.MP_MIN_DETECTION_CONFIDENCE,
         min_tracking_confidence=config.MP_MIN_TRACKING_CONFIDENCE,
+        model_path=config.POSE_MODEL_PATH,
     )
     fall_classifier = FallClassifier(
         angle_threshold_deg=config.FALL_TRUNK_ANGLE_THRESHOLD_DEG,
@@ -291,11 +310,25 @@ def run() -> None:
         led_2_pin=config.LED_2_GPIO_PIN,
         led_2_enabled=config.LED_2_ENABLED,
     )
-    dht22 = DHT22Sensor(
-        data_pin=config.DHT22_DATA_PIN,
-        simulate=config.SIMULATE_GPIO,
-        use_pulseio=config.DHT22_USE_PULSEIO,
-    ) if config.DHT22_ENABLED else None
+    if config.ENV_SENSOR_BACKEND not in ("sht31", "dht22", "none"):
+        raise ValueError("ENV_SENSOR_BACKEND must be sht31, dht22, or none")
+    dht22 = None
+    if config.ENV_SENSOR_BACKEND == "sht31":
+        fallback = DHT22Sensor(
+            data_pin=config.DHT22_DATA_PIN,
+            simulate=config.SIMULATE_GPIO,
+            use_pulseio=config.DHT22_USE_PULSEIO,
+        ) if config.DHT22_FALLBACK_ENABLED and config.DHT22_ENABLED else None
+        dht22 = EnvironmentSensor(
+            SHT31Sensor(config.SHT31_I2C_BUS, config.SHT31_I2C_ADDRESS, config.SIMULATE_GPIO),
+            fallback,
+        )
+    elif config.ENV_SENSOR_BACKEND == "dht22" and config.DHT22_ENABLED:
+        dht22 = DHT22Sensor(
+            data_pin=config.DHT22_DATA_PIN,
+            simulate=config.SIMULATE_GPIO,
+            use_pulseio=config.DHT22_USE_PULSEIO,
+        )
     line = LineNotifier(
         channel_access_token=config.LINE_CHANNEL_ACCESS_TOKEN,
         to=config.LINE_TARGET_ID,
@@ -310,22 +343,9 @@ def run() -> None:
     if config.SHOW_WINDOW or config.BED_ROI_MARK_ON_START:
         cv2 = _load_cv2()
 
-    if config.BED_ROI_MARK_ON_START:
-        if cv2 is None:
-            logger.warning("BED_ROI_MARK_ON_START=1 but OpenCV GUI is unavailable")
-        else:
-            _interactive_mark_bed_roi(cam, cv2, config.BED_ROI_MARK_SCALE, logger)
-
-    if config.SHOW_WINDOW and cv2 is not None:
-        display_scale = config.DISPLAY_SCALE if config.DISPLAY_SCALE > 0 else 1.0
-        window_w = int(config.CAMERA_WIDTH * display_scale)
-        window_h = int(config.CAMERA_HEIGHT * display_scale)
-        cv2.namedWindow("posture_alarm", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("posture_alarm", max(window_w, 320), max(window_h, 240))
-
     previous_state = state_machine.state
     read_failures = 0
-    last_alert_ts = 0.0
+    last_alert_ts = float("-inf")
     last_dht_read_ts = 0.0
     last_dht_log_ts = 0.0
     last_dht_error_log_ts = 0.0
@@ -353,13 +373,13 @@ def run() -> None:
         config.BUZZER_PWM_FREQUENCY,
     )
     if dht22 is None:
-        logger.info("DHT22 disabled")
+        logger.info("Environment sensor disabled")
     elif dht22.available:
-        logger.info("DHT22 enabled: data_pin=%s", config.DHT22_DATA_PIN)
+        logger.info("Environment sensor enabled: %s", config.ENV_SENSOR_BACKEND)
     elif config.SIMULATE_GPIO:
-        logger.info("DHT22 simulation mode: no physical sensor read")
+        logger.info("Environment sensor simulation mode: no physical sensor read")
     else:
-        logger.warning("DHT22 unavailable: %s", dht22.last_error or "unknown initialization error")
+        logger.warning("Environment sensor unavailable: %s", dht22.last_error or "unknown initialization error")
     line_configured = bool(config.LINE_CHANNEL_ACCESS_TOKEN and config.LINE_TARGET_ID)
     discord_configured = bool(config.DISCORD_WEBHOOK_URL)
     if line_configured:
@@ -387,6 +407,22 @@ def run() -> None:
             )
 
     try:
+        if config.BED_ROI_MARK_ON_START:
+            if cv2 is None:
+                logger.warning("BED_ROI_MARK_ON_START=1 but OpenCV GUI is unavailable")
+            else:
+                if not _interactive_mark_bed_roi(
+                    cam, cv2, config.BED_ROI_MARK_SCALE, logger, lambda: stop_requested,
+                ):
+                    return
+
+        if config.SHOW_WINDOW and cv2 is not None:
+            display_scale = config.DISPLAY_SCALE if config.DISPLAY_SCALE > 0 else 1.0
+            window_w = int(config.CAMERA_WIDTH * display_scale)
+            window_h = int(config.CAMERA_HEIGHT * display_scale)
+            cv2.namedWindow("posture_alarm", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("posture_alarm", max(window_w, 320), max(window_h, 240))
+
         while not stop_requested:
             ok, frame = cam.read_frame()
             if not ok:
@@ -408,21 +444,21 @@ def run() -> None:
             if (
                 dht22 is not None
                 and dht22.available
-                and monotonic_now - last_dht_read_ts >= config.DHT22_READ_INTERVAL_SECONDS
+                and monotonic_now - last_dht_read_ts >= config.ENV_READ_INTERVAL_SECONDS
             ):
                 last_dht_read_ts = monotonic_now
                 reading = dht22.read()
                 if reading is not None:
                     last_dht_reading = reading
-                    if monotonic_now - last_dht_log_ts >= config.DHT22_LOG_INTERVAL_SECONDS:
+                    if monotonic_now - last_dht_log_ts >= config.ENV_LOG_INTERVAL_SECONDS:
                         logger.info(
-                            "DHT22 temperature=%.1fC humidity=%.1f%%",
+                            "Environment temperature=%.1fC humidity=%.1f%%",
                             reading.temperature_c,
                             reading.humidity_pct,
                         )
                         last_dht_log_ts = monotonic_now
-                elif monotonic_now - last_dht_error_log_ts >= config.DHT22_LOG_INTERVAL_SECONDS:
-                    logger.warning("DHT22 read failed: %s", dht22.last_error or "unknown read error")
+                elif monotonic_now - last_dht_error_log_ts >= config.ENV_LOG_INTERVAL_SECONDS:
+                    logger.warning("Environment sensor read failed: %s", dht22.last_error or "unknown read error")
                     last_dht_error_log_ts = monotonic_now
 
             landmarks = pose_estimator.extract_landmarks(frame)
@@ -478,13 +514,13 @@ def run() -> None:
                 buzzer.alert_on()
                 now_ts = time.monotonic()
                 if (now_ts - last_alert_ts) >= config.ALERT_COOLDOWN_SECONDS:
-                    if _send_fall_alert(db, line, discord, logger, fall_payload):
-                        last_alert_ts = now_ts
+                    last_alert_ts = now_ts
+                    _send_fall_alert(db, line, discord, logger, fall_payload)
             else:
                 buzzer.alert_off()
 
             frame = overlay.draw_status(frame, state.value, warning=state == PostureState.FALLEN)
-            if config.DHT22_ENABLED and config.DHT22_SHOW:
+            if dht22 is not None and config.ENV_SHOW:
                 frame = overlay.draw_environment(
                     frame,
                     last_dht_reading.temperature_c if last_dht_reading else None,
@@ -524,7 +560,10 @@ def run() -> None:
                     break
                 if key in (ord("m"), ord("M")):
                     logger.info("manual BED ROI re-mark requested")
-                    _interactive_mark_bed_roi(cam, cv2, config.BED_ROI_MARK_SCALE, logger)
+                    if not _interactive_mark_bed_roi(
+                        cam, cv2, config.BED_ROI_MARK_SCALE, logger, lambda: stop_requested,
+                    ):
+                        break
                     continue
                 if cv2.getWindowProperty("posture_alarm", cv2.WND_PROP_VISIBLE) < 1:
                     logger.info("exit requested by window close")

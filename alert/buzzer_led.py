@@ -14,7 +14,7 @@ class BuzzerLED:
         buzzer_pwm: bool = True,
         buzzer_frequency: float = 2000.0,
         buzzer_pin: int = 17,
-        led_pin: int = 27,
+        led_pin: int = 18,
         led_2_pin: int = 22,
         led_2_enabled: bool = True,
     ) -> None:

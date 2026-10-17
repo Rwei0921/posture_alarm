@@ -8,7 +8,7 @@ import time
 
 
 DEFAULT_BUZZER_PIN = 17
-DEFAULT_LED_PIN = 27
+DEFAULT_LED_PIN = 18
 DEFAULT_LED_2_PIN = 22
 
 
@@ -179,8 +179,8 @@ def main() -> None:
     parser.add_argument("--led-2-pin", type=int, default=DEFAULT_LED_2_PIN, help="BCM GPIO pin for LED_2")
     parser.add_argument("--duration", type=float, default=0.5, help="On/off duration in seconds")
     parser.add_argument("--repeat", type=int, default=5, help="Blink repeat count for both devices")
-    parser.add_argument("--pwm-buzzer", action="store_true", help="Use PWM tone output for passive buzzers")
-    parser.add_argument("--frequency", type=float, default=1000.0, help="PWM buzzer frequency in Hz")
+    parser.add_argument("--pwm-buzzer", action="store_true", default=True, help="Use PWM tone output for passive buzzers (default)")
+    parser.add_argument("--frequency", type=float, default=2000.0, help="PWM buzzer frequency in Hz")
     parser.add_argument("--simulate", action="store_true", help="Print actions without using GPIO hardware")
     args = parser.parse_args()
 

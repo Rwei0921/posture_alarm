@@ -30,6 +30,7 @@ class PostureStateMachine:
         self.state = PostureState.NORMAL
         self.state_since = time.monotonic()
         self.last_motion_ts = self.state_since
+        self._recovery_since: float | None = None
 
     def update(
         self,
@@ -67,9 +68,13 @@ class PostureStateMachine:
             return self.state
 
         if self.state == PostureState.FALLEN:
-            elapsed = now_ts - self.state_since
-            if not fall_detected and elapsed >= self.recovery_seconds:
-                self._transition(PostureState.NORMAL, now_ts)
+            if fall_detected:
+                self._recovery_since = None
+            else:
+                if self._recovery_since is None:
+                    self._recovery_since = now_ts
+                if now_ts - self._recovery_since >= self.recovery_seconds:
+                    self._transition(PostureState.NORMAL, now_ts)
             return self.state
 
         if self.state == PostureState.SEDENTARY:
@@ -87,5 +92,6 @@ class PostureStateMachine:
         return self.state
 
     def _transition(self, new_state: PostureState, now: float) -> None:
+        self._recovery_since = None
         self.state = new_state
         self.state_since = now
