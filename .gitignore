@@ -5,3 +5,5 @@ __pycache__/
 data/
 reports/
 demo.env
+demo.env.save*
+.env-update-*

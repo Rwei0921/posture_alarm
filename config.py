@@ -22,6 +22,10 @@ RPICAM_BUFFER_MAX_BYTES = int(os.getenv("RPICAM_BUFFER_MAX_BYTES", str(4 * 1024 
 SHOW_WINDOW = os.getenv("SHOW_WINDOW", "1") == "1"
 DISPLAY_SCALE = float(os.getenv("DISPLAY_SCALE", "0.5"))
 
+# 控制面板預設關閉，保留原本 CLI 啟動方式。
+GUI_ENABLED = os.getenv("GUI_ENABLED", "0") == "1"
+GUI_REFRESH_MS = max(100, min(5000, int(os.getenv("GUI_REFRESH_MS", "500"))))
+
 # PCB hardware pins and environment sensors
 BUZZER_GPIO_PIN = int(os.getenv("BUZZER_GPIO_PIN", "17"))
 LED_GPIO_PIN = int(os.getenv("LED_GPIO_PIN", "18"))

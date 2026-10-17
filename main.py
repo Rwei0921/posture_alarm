@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import os
 import signal
+from threading import Event
 import time
 from typing import Any, Callable, Protocol
 
@@ -248,9 +249,21 @@ def _interactive_mark_bed_roi(
     return not should_stop()
 
 
-def run() -> None:
+def run(
+    status_callback: Callable[[dict[str, Any]], None] | None = None,
+    stop_event: Event | None = None,
+) -> None:
     logger = setup_logger()
     stop_requested = False
+
+    def should_stop() -> bool:
+        return stop_requested or (stop_event is not None and stop_event.is_set())
+
+    def publish(snapshot: dict[str, Any]) -> None:
+        if status_callback is not None:
+            status_callback(snapshot)
+
+    publish({"phase": "starting", "camera_ok": False})
 
     def _request_stop(signum: int, _frame) -> None:
         nonlocal stop_requested
@@ -350,6 +363,11 @@ def run() -> None:
     last_dht_log_ts = 0.0
     last_dht_error_log_ts = 0.0
     last_dht_reading: DHT22Reading | None = None
+    last_sensor_success: float | None = None
+    last_status_ts = float("-inf")
+    last_notification_result: dict[str, Any] | None = None
+    from core.control_settings import THRESHOLDS
+    active_thresholds = {spec.key: getattr(config, spec.key) for spec in THRESHOLDS}
     logger.info("posture_alarm started")
     if config.LOG_FILE_ENABLED:
         logger.info("file logging enabled: %s", config.LOG_FILE_PATH)
@@ -412,7 +430,7 @@ def run() -> None:
                 logger.warning("BED_ROI_MARK_ON_START=1 but OpenCV GUI is unavailable")
             else:
                 if not _interactive_mark_bed_roi(
-                    cam, cv2, config.BED_ROI_MARK_SCALE, logger, lambda: stop_requested,
+                    cam, cv2, config.BED_ROI_MARK_SCALE, logger, should_stop,
                 ):
                     return
 
@@ -423,10 +441,11 @@ def run() -> None:
             cv2.namedWindow("posture_alarm", cv2.WINDOW_NORMAL)
             cv2.resizeWindow("posture_alarm", max(window_w, 320), max(window_h, 240))
 
-        while not stop_requested:
+        while not should_stop():
             ok, frame = cam.read_frame()
             if not ok:
                 read_failures += 1
+                publish({"phase": "running", "camera_ok": False, "read_failures": read_failures})
                 if read_failures % 10 == 0:
                     logger.warning(
                         "camera frame unavailable (%s/%s)",
@@ -450,6 +469,7 @@ def run() -> None:
                 reading = dht22.read()
                 if reading is not None:
                     last_dht_reading = reading
+                    last_sensor_success = monotonic_now
                     if monotonic_now - last_dht_log_ts >= config.ENV_LOG_INTERVAL_SECONDS:
                         logger.info(
                             "Environment temperature=%.1fC humidity=%.1f%%",
@@ -515,9 +535,42 @@ def run() -> None:
                 now_ts = time.monotonic()
                 if (now_ts - last_alert_ts) >= config.ALERT_COOLDOWN_SECONDS:
                     last_alert_ts = now_ts
-                    _send_fall_alert(db, line, discord, logger, fall_payload)
+                    sent = _send_fall_alert(db, line, discord, logger, fall_payload)
+                    last_notification_result = {"message_sent": sent, "attempted_at": now_ts}
             else:
                 buzzer.alert_off()
+
+            # 傳送觀察資料，不把 GUI 的編輯值直接寫回分類器或狀態機。
+            if status_callback is not None and (
+                monotonic_now - last_status_ts >= config.GUI_REFRESH_MS / 1000.0
+            ):
+                last_status_ts = monotonic_now
+                snapshot = {
+                    **fall_payload,
+                    "phase": "running", "camera_ok": True, "state": state.value,
+                    "fall_detected": fall_detected,
+                    "gpio_simulated": buzzer.simulate,
+                    "buzzer_active": buzzer.active,
+                    "led_active": buzzer.active,
+                    "led_2_active": buzzer.active and config.LED_2_ENABLED,
+                    "sensor_backend": config.ENV_SENSOR_BACKEND,
+                    "sensor_available": bool(dht22 is not None and dht22.available),
+                    "sensor_error": bool(dht22 is not None and dht22.last_error),
+                    "sensor_age_seconds": (monotonic_now - last_sensor_success)
+                    if last_sensor_success is not None else None,
+                    "line_configured": line_configured, "discord_configured": discord_configured,
+                    "notification_result": last_notification_result,
+                    "thresholds": active_thresholds,
+                    "hardware": {
+                        "buzzer_pin": config.BUZZER_GPIO_PIN,
+                        "led_pin": config.LED_GPIO_PIN,
+                        "led_2_pin": config.LED_2_GPIO_PIN,
+                        "buzzer_frequency": config.BUZZER_PWM_FREQUENCY,
+                    },
+                }
+                if person_present:
+                    snapshot.update(hip_drop=features.hip_drop, recent_event=features.recent_event)
+                publish(snapshot)
 
             frame = overlay.draw_status(frame, state.value, warning=state == PostureState.FALLEN)
             if dht22 is not None and config.ENV_SHOW:
@@ -561,7 +614,7 @@ def run() -> None:
                 if key in (ord("m"), ord("M")):
                     logger.info("manual BED ROI re-mark requested")
                     if not _interactive_mark_bed_roi(
-                        cam, cv2, config.BED_ROI_MARK_SCALE, logger, lambda: stop_requested,
+                        cam, cv2, config.BED_ROI_MARK_SCALE, logger, should_stop,
                     ):
                         break
                     continue
@@ -589,7 +642,12 @@ def run() -> None:
         # Keep reporter instantiated and available for external scheduling/use.
         _ = reporter
         logger.info("posture_alarm stopped")
+        publish({"phase": "stopped", "camera_ok": False})
 
 
 if __name__ == "__main__":
-    run()
+    if config.GUI_ENABLED:
+        from run_gui import launch
+        launch()
+    else:
+        run()

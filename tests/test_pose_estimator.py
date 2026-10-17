@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -89,7 +90,8 @@ def test_default_model_path_is_independent_of_working_directory(tasks, monkeypat
     monkeypatch.chdir(tmp_path)
     PoseEstimator()
     options = tasks[1].PoseLandmarker.create_from_options.call_args.args[0]
-    assert options.base_options.model_asset_path.endswith("/models/pose_landmarker_lite.task")
+    # Path 會在 Windows 使用反斜線；驗證同一個模型位置而非字串分隔符號。
+    assert Path(options.base_options.model_asset_path).parts[-2:] == ("models", "pose_landmarker_lite.task")
 
 
 def test_pose_model_configuration(monkeypatch):

@@ -4,6 +4,8 @@
 
 Additional DHT22, LED_2, and 5V buzzer component wiring is documented in [`hardware_components.md`](hardware_components.md).
 
+The optional Tkinter control panel supports monitoring, LINE/Discord settings, and fall-threshold tuning. See [`gui_guide.md`](gui_guide.md) for startup and operation. Run `python run_gui.py --preview` to inspect the interface without hardware or notifications.
+
 ## Hardware Pins
 
 Use BCM GPIO numbering:
@@ -11,7 +13,10 @@ Use BCM GPIO numbering:
 | Device | BCM GPIO | Physical Pin |
 | --- | --- | --- |
 | Buzzer | GPIO 17 | Pin 11 |
-| LED | GPIO 27 | Pin 13 |
+| PCB LED1 | GPIO 18 | Pin 12 |
+| PCB LED2 | GPIO 22 | Pin 15 |
+
+These are the current PCB defaults. Earlier wiring examples used GPIO27 for LED1; existing pin overrides remain supported. SHT31 uses I²C bus 1, GPIO2/SDA (pin 3) and GPIO3/SCL (pin 5). See [`PCB_HARDWARE.md`](PCB_HARDWARE.md).
 
 LED should use a resistor, typically 220 to 330 ohm. The current buzzer flow uses PWM by default for a two-pin passive buzzer.
 

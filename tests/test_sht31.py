@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from sensors.dht22 import DHT22Reading
@@ -24,7 +26,9 @@ def test_i2c_bus_address_conversion_and_cleanup():
     data = b"\x66\x66"
     word = data + bytes([SHT31Sensor._crc(data)])
     device.read.return_value = word + word
-    with patch("builtins.open", return_value=device) as opener, patch("fcntl.ioctl") as ioctl:
+    # 模擬 Linux I²C 邊界，讓無硬體的 Windows 測試也能驗證相同操作。
+    ioctl = Mock()
+    with patch("builtins.open", return_value=device) as opener, patch.dict(sys.modules, {"fcntl": SimpleNamespace(ioctl=ioctl)}):
         sensor = SHT31Sensor(bus=1, address=0x45)
         opener.assert_called_once_with("/dev/i2c-1", "r+b", buffering=0)
         ioctl.assert_called_once_with(device.fileno(), 0x0703, 0x45)
@@ -61,7 +65,8 @@ def test_bad_reads_fail_soft_and_recover():
 
 def test_initialization_failure_closes_bus():
     device = Mock()
-    with patch("builtins.open", return_value=device), patch("fcntl.ioctl", side_effect=OSError("no device")):
+    ioctl = Mock(side_effect=OSError("no device"))
+    with patch("builtins.open", return_value=device), patch.dict(sys.modules, {"fcntl": SimpleNamespace(ioctl=ioctl)}):
         sensor = SHT31Sensor()
         assert not sensor.available
         assert "no device" in sensor.last_error

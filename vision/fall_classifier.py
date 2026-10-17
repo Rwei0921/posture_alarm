@@ -16,6 +16,9 @@ class FallFeatures:
     fall_score: float
     has_fall_event: bool
     hip_center_y: float
+    # 僅供 GUI 診斷，原有跌倒公式與回傳布林值保持不變。
+    hip_drop: float = 0.0
+    recent_event: bool = False
 
 
 class FallClassifier:
@@ -81,6 +84,8 @@ class FallClassifier:
             fall_score,
             has_fall_event,
             hip[1],
+            hip_drop,
+            recent_event,
         )
 
     def _current_score(self) -> float:
