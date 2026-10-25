@@ -80,6 +80,12 @@ GUI_PREVIEW_FPS=5
 
 硬體測試僅能在此控制面板的監控停止後執行，確認後開啟 LED／蜂鳴器約一秒。會使用已儲存的接腳與 PWM 設定，GPIO17／18／22 不會因 GUI 被改動。
 
+目前綠燈 GPIO18 表示取得影像且完成正常偵測，紅燈 GPIO22 只在確認跌倒時亮；
+硬體測試先亮綠燈約 0.5 秒，再亮紅燈並鳴叫約 0.5 秒。綠燈不是網路或 SHT31 健康指示。
+
+樹莓派封裝版的 GUI 操作流程相同，但 demo.env、data/、reports/ 放在執行檔旁，
+而不是封裝資源／解壓暫存目錄。封裝及實機驗收請參考 [封裝指南](packaging_guide.md)。
+
 目前 SHT31 選擇方式是 `ENV_SENSOR_BACKEND=sht31`，I²C 設定為 `SHT31_I2C_BUS=1`、`SHT31_I2C_ADDRESS=0x44`。`SHT31_ENABLED` 並非目前程式的選擇開關。
 
 ## LINE／Discord

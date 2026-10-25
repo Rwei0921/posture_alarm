@@ -13,6 +13,7 @@ import time
 from typing import Any
 
 from core.control_settings import NOTIFICATION_KEYS, read_env
+from core.runtime_paths import is_frozen
 
 
 MESSAGE_PREFIX = "POSTURE_GUI:"
@@ -49,8 +50,10 @@ class MonitorProcess:
                            PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
         # 密鑰只透過子程序環境傳入，不放在命令列或 GUI 訊息內。
         self.mode = mode
+        command = ([sys.executable, "--worker", mode] if is_frozen() else
+                   [sys.executable, "-u", str(self.root / "control_worker.py"), mode])
         self.process = subprocess.Popen(
-            [sys.executable, "-u", str(self.root / "control_worker.py"), mode],
+            command,
             cwd=self.root, env=environment, stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace",

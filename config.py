@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+
+from core.runtime_paths import application_root, is_frozen, resource_root
+
+# 原始碼的路徑與預設值不變；封裝時分開唯讀模型與可寫入資料。
+BASE_DIR = application_root()
+RESOURCE_DIR = resource_root()
 
 # Timezone
 APP_TIMEZONE = os.getenv("APP_TIMEZONE", "Asia/Taipei")
@@ -51,7 +56,11 @@ ENV_SHOW = os.getenv("ENV_SHOW", "1" if DHT22_SHOW else "0") == "1"
 
 # MediaPipe / pose
 # Tasks 姿態模型路徑，可透過環境變數指定其他 .task 檔案。
-POSE_MODEL_PATH = os.getenv("POSE_MODEL_PATH", "models/pose_landmarker_lite.task")
+POSE_MODEL_PATH = os.getenv(
+    "POSE_MODEL_PATH",
+    str(RESOURCE_DIR / "models" / "pose_landmarker_lite.task")
+    if is_frozen() else "models/pose_landmarker_lite.task",
+)
 MP_STATIC_IMAGE_MODE = False
 MP_MODEL_COMPLEXITY = int(os.getenv("MP_MODEL_COMPLEXITY", "1"))
 MP_MIN_DETECTION_CONFIDENCE = float(os.getenv("MP_MIN_DETECTION_CONFIDENCE", "0.5"))
@@ -104,7 +113,7 @@ ALERT_COOLDOWN_SECONDS = float(os.getenv("ALERT_COOLDOWN_SECONDS", "60"))
 
 # Logging
 LOG_FILE_ENABLED = os.getenv("LOG_FILE_ENABLED", "1") == "1"
-LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", str(Path(__file__).resolve().parent / "data" / "posture_alarm.log"))
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", str(BASE_DIR / "data" / "posture_alarm.log"))
 
 # Notifier
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
@@ -112,7 +121,6 @@ LINE_TARGET_ID = os.getenv("LINE_TARGET_ID", "")
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 
 # Storage
-BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 REPORT_DIR = BASE_DIR / "reports"
 DB_PATH = str(DATA_DIR / "events.db")

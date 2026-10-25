@@ -4,3 +4,4 @@ requests>=2.31.0
 gpiozero>=2.0
 adafruit-circuitpython-dht>=4.0.0; platform_system != "Windows"
 pytest>=8.0.0
+# Optional native Raspberry Pi packaging tools: requirements_build.txt

@@ -10,6 +10,8 @@ import subprocess
 import time
 from typing import Any, Tuple
 
+from core.runtime_paths import external_program_environment
+
 
 class Camera:
     def __init__(
@@ -179,6 +181,7 @@ class Camera:
 
             self._rpicam_proc = subprocess.Popen(
                 cmd,
+                env=external_program_environment(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 bufsize=0,
