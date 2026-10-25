@@ -104,15 +104,23 @@ def worker(mode: str) -> int:
                 led_2_pin=config.LED_2_GPIO_PIN, led_2_enabled=config.LED_2_ENABLED,
             )
             try:
-                if not stop.is_set():
-                    alarm.alert_on()
+                # 先測正常綠燈，再測紅燈與蜂鳴器，避免兩燈同亮造成誤解。
+                for action in (alarm.normal_on, alarm.alert_on):
+                    if stop.is_set():
+                        break
+                    action()
                     emit({"phase": "alarm_test", "gpio_simulated": alarm.simulate,
-                          "buzzer_active": alarm.active, "led_active": alarm.active,
-                          "led_2_active": alarm.active and config.LED_2_ENABLED})
-                    stop.wait(1.0)
+                          "buzzer_active": alarm.active, "led_active": alarm.led_active,
+                          "led_2_active": alarm.led_2_active,
+                          "hardware": {"buzzer_pin": config.BUZZER_GPIO_PIN,
+                                       "led_pin": config.LED_GPIO_PIN,
+                                       "led_2_pin": config.LED_2_GPIO_PIN,
+                                       "buzzer_frequency": config.BUZZER_PWM_FREQUENCY}})
+                    stop.wait(0.5)
             finally:
                 alarm.close()
-                emit({"phase": "stopped", "camera_ok": False})
+                emit({"phase": "stopped", "camera_ok": False, "buzzer_active": False,
+                      "led_active": False, "led_2_active": False})
         else:
             raise ValueError("Unknown worker mode")
         return 0

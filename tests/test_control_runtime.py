@@ -27,6 +27,8 @@ def test_status_callback_reports_decision_and_actual_gpio_mode_without_secrets()
         mocks["PostureStateMachine"].update.return_value = PostureState.FALLEN
         mocks["BuzzerLED"].simulate = True
         mocks["BuzzerLED"].active = True
+        mocks["BuzzerLED"].led_active = False
+        mocks["BuzzerLED"].led_2_active = True
         snapshots = []
         app.run(status_callback=snapshots.append)
         sample = next(snapshot for snapshot in snapshots if snapshot.get("camera_ok"))
@@ -35,6 +37,8 @@ def test_status_callback_reports_decision_and_actual_gpio_mode_without_secrets()
         assert sample["recent_event"] is True
         assert sample["gpio_simulated"] is True
         assert sample["buzzer_active"] is True
+        assert sample["led_active"] is False
+        assert sample["led_2_active"] is True
         assert sample["thresholds"]["FALL_SCORE_THRESHOLD"] == config.FALL_SCORE_THRESHOLD
         assert "LINE_CHANNEL_ACCESS_TOKEN" not in str(snapshots)
         assert snapshots[-1]["phase"] == "stopped"

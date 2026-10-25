@@ -449,7 +449,13 @@ def run(
             ok, frame = cam.read_frame()
             if not ok:
                 read_failures += 1
-                publish({"phase": "running", "camera_ok": False, "read_failures": read_failures})
+                # 缺少影像不能顯示正常；保留既有跌倒警報與通知冷卻狀態。
+                buzzer.indicators_off()
+                publish({
+                    "phase": "running", "camera_ok": False, "read_failures": read_failures,
+                    "gpio_simulated": buzzer.simulate, "buzzer_active": buzzer.active,
+                    "led_active": buzzer.led_active, "led_2_active": buzzer.led_2_active,
+                })
                 if read_failures % 10 == 0:
                     logger.warning(
                         "camera frame unavailable (%s/%s)",
@@ -542,7 +548,8 @@ def run(
                     sent = _send_fall_alert(db, line, discord, logger, fall_payload)
                     last_notification_result = {"message_sent": sent, "attempted_at": now_ts}
             else:
-                buzzer.alert_off()
+                # 有有效影像且偵測流程完成才亮綠燈；不要求畫面內一定有人。
+                buzzer.normal_on()
 
             # 傳送觀察資料，不把 GUI 的編輯值直接寫回分類器或狀態機。
             if status_callback is not None and (
@@ -555,8 +562,8 @@ def run(
                     "fall_detected": fall_detected,
                     "gpio_simulated": buzzer.simulate,
                     "buzzer_active": buzzer.active,
-                    "led_active": buzzer.active,
-                    "led_2_active": buzzer.active and config.LED_2_ENABLED,
+                    "led_active": buzzer.led_active,
+                    "led_2_active": buzzer.led_2_active,
                     "sensor_backend": config.ENV_SENSOR_BACKEND,
                     "sensor_available": bool(dht22 is not None and dht22.available),
                     "sensor_error": bool(dht22 is not None and dht22.last_error),
@@ -620,6 +627,7 @@ def run(
                     break
                 if key in (ord("m"), ord("M")):
                     logger.info("manual BED ROI re-mark requested")
+                    buzzer.indicators_off()
                     if not _interactive_mark_bed_roi(
                         cam, cv2, config.BED_ROI_MARK_SCALE, logger, should_stop,
                     ):
@@ -636,20 +644,23 @@ def run(
         logger.info("received keyboard interrupt, shutting down")
 
     finally:
-        cam.release()
-        pose_estimator.close()
-        person_detector.close()
-        buzzer.close()
-        if dht22 is not None:
-            dht22.close()
-        db.close()
-        if cv2 is not None:
-            cv2.destroyAllWindows()
+        # 先熄燈與停止蜂鳴器，避免相機釋放失敗後仍留下正常指示。
+        try:
+            buzzer.close()
+        finally:
+            cam.release()
+            pose_estimator.close()
+            person_detector.close()
+            if dht22 is not None:
+                dht22.close()
+            db.close()
+            if cv2 is not None:
+                cv2.destroyAllWindows()
 
-        # Keep reporter instantiated and available for external scheduling/use.
-        _ = reporter
-        logger.info("posture_alarm stopped")
-        publish({"phase": "stopped", "camera_ok": False})
+            # Keep reporter instantiated and available for external scheduling/use.
+            _ = reporter
+            logger.info("posture_alarm stopped")
+            publish({"phase": "stopped", "camera_ok": False})
 
 
 if __name__ == "__main__":
